@@ -15,26 +15,22 @@
 #define BUF_SIZE 2000
 
 
-void *receive_messages(void *sockPtr) {
+void attach(int from_fd, int to_fd) {
     char buffer[BUF_SIZE];
-    memset(buffer, 0, BUF_SIZE);
-    int *sockfd = (int *) sockPtr;
 
     while (true) {
-        int ret;
-        if ((ret = recvfrom(*sockfd, buffer, BUF_SIZE, 0, NULL, NULL)) < 0) {
-            printf("Error receiving data!\n");
-            break;
-        }
-
-        printf("received: %d: ", ret);
-        fputs(buffer, stdout);
-        printf("\n");
-
+        size_t readLength = read(from_fd, buffer, BUF_SIZE);
+        write(to_fd, buffer, readLength);
     }
+}
+
+
+void *receive_messages(void *sockPtr) {
+    attach(*(int *) sockPtr, 1);
 
     return NULL;
 }
+
 
 int listen_and_accept(int sockfd) {
     struct sockaddr_in6 serv_addr, cli_addr;
@@ -46,8 +42,10 @@ int listen_and_accept(int sockfd) {
 
     if (zts_bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
         printf("ERROR on binding");
+    printf("Bind Complete\n");
 
     zts_listen(sockfd, 1);
+    printf("Listening\n");
 
     int cli_addr_len = sizeof(cli_addr);
 
@@ -62,26 +60,10 @@ int listen_and_accept(int sockfd) {
     return newsockfd;
 }
 
-void send_stdin(int sockfd) {
-    char buffer[BUF_SIZE];
-
-    while (true) {
-        int readLength;
-        if ((readLength = read(0, buffer, BUF_SIZE)) < 0) {
-            printf("Error reading from STDIN");
-            break;
-        }
-        if (strcmp(buffer, "END") == 0)
-            break;
-
-        zts_write(sockfd, buffer, readLength);
-    }
-}
-
 void receive_messages_in_background(int &newsockfd) {
     pthread_t rThread;
     int ret = pthread_create(&rThread, NULL, receive_messages, &newsockfd);
-    if (ret) {
+    if (ret != 0) {
         printf("ERROR: Return Code from pthread_create() is %d\n", ret);
     }
 }
@@ -130,16 +112,14 @@ int main(int argc, char *argv[]) {
 
         receive_messages_in_background(sockfd);
 
-        send_stdin(sockfd);
+        attach(0, sockfd);
 
     } else {
         int newsockfd = listen_and_accept(sockfd);
 
-//        receive_messages(newsockfd);
-
         receive_messages_in_background(newsockfd);
 
-        send_stdin(newsockfd);
+        attach(0, newsockfd);
 
 
         sleep(2);
