@@ -12,6 +12,22 @@
 
 #define NETWORK_ID "8056c2e21c000001"
 
+#define BUF_SIZE 2000
+
+void receiveMessage(int sockfd) {
+    char buffer[BUF_SIZE];
+    memset(buffer, 0, BUF_SIZE);
+    while (true) {
+        if (recvfrom(sockfd, buffer, BUF_SIZE, 0, NULL, NULL) < 0) {
+            printf("Error receiving data!\n");
+        } else {
+            printf("received: ");
+            fputs(buffer, stdout);
+            printf("\n");
+        }
+    }
+}
+
 int main(int argc, char *argv[]) {
     zts_start("./zt");
 
@@ -102,11 +118,7 @@ int main(int argc, char *argv[]) {
         printf("Incoming connection from client having IPv6 address: %s\n", client_addr_ipv6);
 
 
-        printf("reading from buffer\n");
-        char newbuf[32];
-        memset(newbuf, 0, 32);
-        read(newsockfd, newbuf, 20);
-        printf("newbuf = %s\n", newbuf);
+        receiveMessage(newsockfd);
 
         sleep(2);
         zts_close(newsockfd);
