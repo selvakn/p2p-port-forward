@@ -24,9 +24,9 @@ void attach(int from_fd, int to_fd) {
     }
 }
 
-
-void *receive_messages(void *sockPtr) {
-    attach(*(int *) sockPtr, 1);
+void *attach_fds(void *args) {
+    int *fds = (int *) args;
+    attach(fds[0], fds[1]);
 
     return NULL;
 }
@@ -60,9 +60,10 @@ int listen_and_accept(int sockfd) {
     return newsockfd;
 }
 
-void receive_messages_in_background(int &newsockfd) {
+void attach_in_background(int from_fd, int to_fd) {
     pthread_t rThread;
-    int ret = pthread_create(&rThread, NULL, receive_messages, &newsockfd);
+    int args[] = {from_fd, to_fd};
+    int ret = pthread_create(&rThread, NULL, attach_fds, &args);
     if (ret != 0) {
         printf("ERROR: Return Code from pthread_create() is %d\n", ret);
     }
@@ -110,15 +111,13 @@ int main(int argc, char *argv[]) {
             return -1;
         }
 
-        receive_messages_in_background(sockfd);
-
+        attach_in_background(sockfd, 1);
         attach(0, sockfd);
 
     } else {
         int newsockfd = listen_and_accept(sockfd);
 
-        receive_messages_in_background(newsockfd);
-
+        attach_in_background(newsockfd, 1);
         attach(0, newsockfd);
 
 
