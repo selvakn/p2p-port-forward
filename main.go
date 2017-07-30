@@ -6,11 +6,12 @@ import (
 	"os/signal"
 	"unsafe"
 	"syscall"
+	"net"
 )
 
 /*
-#cgo CFLAGS: -I ./libzt/include
-#cgo darwin LDFLAGS: -L ./libzt/darwin/ -lzt -lstdc++
+#cgo CFLAGS: -I /Users/selva/repos/libzt/examples/cpp/libzt/include
+#cgo darwin LDFLAGS: -L /Users/selva/repos/libzt/examples/cpp/libzt/darwin/ -lzt -lstdc++
 
 #include "libzt.h"
 #include <stdlib.h>
@@ -58,13 +59,6 @@ func validate(value C.int, message string) {
 	}
 }
 
-func onError(err error, message string) {
-	if err != nil {
-		fmt.Printf("%s: %v", message, err)
-		os.Exit(1)
-	}
-}
-
 func bindAndListen(sockfd C.int) int {
 	//serverSocket := C.struct_sockaddr_in6{sin6_flowinfo: 0, sin6_family: C.AF_INET6, sin6_addr: C.in6addr_any, sin6_port: 7878}
 	serverSocket := syscall.RawSockaddrInet6{Flowinfo: 0, Family: syscall.AF_INET6, Port: PORT}
@@ -87,6 +81,24 @@ func bindAndListen(sockfd C.int) int {
 
 	return int(newSockfd)
 }
+func connectSockets(first int, second int, callback func([]byte)) {
+	packet := make([]byte, BUF_SIZE)
+
+	for {
+		plen, _ := syscall.Read(first, packet)
+
+		callback(packet[:plen])
+		syscall.Write(second, packet[:plen])
+	}
+}
+
+func parseIPV6(ipString string) [16]byte {
+	ip := net.ParseIP(ipString)
+	var arr [16]byte
+	copy(arr[:], ip)
+	return arr
+}
+
 func main() {
 	fmt.Println("Hello")
 
@@ -108,26 +120,28 @@ func main() {
 	if len(getOtherIP()) == 0 {
 		newSockfd := bindAndListen(sockfd)
 
-		//size_t readLength = read(from_fd, buffer, BUF_SIZE);
-		//write(to_fd, buffer, readLength);
+		go connectSockets(newSockfd, 1, func(payload []byte) {
+			//header, _ := ipv4.ParseHeader(packet[:plen])
+			//fmt.Println("Sending to remote: %+v", header)
+		})
 
-		packet := make([]byte, BUF_SIZE)
-		go func() {
-			for {
-				plen, err := syscall.Read(newSockfd, packet)
-
-				onError(err, "Error on reading from socket")
-
-				//header, _ := ipv4.ParseHeader(packet[:plen])
-				//fmt.Println("Sending to remote: %+v", header)
-				fmt.Print(string(packet[:plen]))
-
-				//sendRawMessage(peer, packet[:plen])
-			}
-		}()
-
+		connectSockets(0, newSockfd, func(payload []byte) {})
 	} else {
+		arr := parseIPV6(getOtherIP())
+		clientSocket := syscall.RawSockaddrInet6{Flowinfo: 0, Family: syscall.AF_INET6, Port: PORT, Addr: arr}
 
+		sockfd := C.zts_socket(syscall.AF_INET6, syscall.SOCK_STREAM, 0)
+		validate(sockfd, "Error in opening socket")
+
+		retVal := C.zts_connect(sockfd, (* C.struct_sockaddr)(unsafe.Pointer(&clientSocket)), C.sizeof_struct_sockaddr_in6)
+		validate(retVal, "Error in connect client")
+
+		go connectSockets((int)(sockfd), 1, func(payload []byte) {
+			//header, _ := ipv4.ParseHeader(packet[:plen])
+			//fmt.Println("Sending to remote: %+v", header)
+		})
+
+		connectSockets(0, (int)(sockfd), func(payload []byte) {})
 	}
 
 	<-setupCleanUpOnInterrupt()
