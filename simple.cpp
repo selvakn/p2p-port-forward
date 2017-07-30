@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include <netdb.h>
+#include <sys/un.h>
 
 #include "libzt.h"
 
@@ -69,6 +70,39 @@ void attach_in_background(int from_fd, int to_fd) {
     }
 }
 
+int build_unix_socket(const char *path) {
+    int fd;
+    struct sockaddr_un addr, caddr;
+
+
+    if ((fd = socket(PF_UNIX, SOCK_STREAM, 0)) < 0) {
+        perror("unable to open unix socket");
+        return fd;
+    }
+
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    strcpy(addr.sun_path, path);
+    unlink(path);
+    if (bind(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+        perror("unable to bind unix socket");
+        return fd;
+    }
+
+    if (listen(fd, 5) != 0) {
+        perror("unable to connect unix socket");
+        return fd;
+    }
+
+    int cli_addr_len = sizeof(caddr);
+    int newsockfd = accept(fd, (struct sockaddr *) &caddr, (socklen_t *) &cli_addr_len);
+    if (newsockfd < 0) {
+        perror("unable to accept unix socket");
+    }
+
+    return newsockfd;
+}
+
 int main(int argc, char *argv[]) {
     zts_simple_start("./zt", NETWORK_ID);
 
@@ -111,15 +145,16 @@ int main(int argc, char *argv[]) {
             return -1;
         }
 
-        attach_in_background(sockfd, 1);
-        attach(0, sockfd);
+        int sfd = build_unix_socket("/tmp/l.sock");
+        attach_in_background(sockfd, sfd);
+        attach(sfd, sockfd);
 
     } else {
         int newsockfd = listen_and_accept(sockfd);
 
+//        int sfd = build_unix_socket("/tmp/c.sock");
         attach_in_background(newsockfd, 1);
         attach(0, newsockfd);
-
 
         sleep(2);
         zts_close(newsockfd);
