@@ -11,6 +11,7 @@ import (
 	"unsafe"
 
 	"github.com/songgao/water"
+	"io"
 )
 
 /*
@@ -152,11 +153,11 @@ func validateErr(err error, message string) {
 	}
 }
 
-func bridge(iface *water.Interface, sockfd int) {
+func bridge(readWriteCloser io.ReadWriteCloser, sockfd int) {
 	buffer1 := make([]byte, BUF_SIZE)
 	go func() {
 		for {
-			plen, err := iface.Read(buffer1)
+			plen, err := readWriteCloser.Read(buffer1)
 			validateErr(err, "Error reading from tun")
 
 			_, writeErr := syscall.Write(sockfd, buffer1[:plen])
@@ -171,7 +172,7 @@ func bridge(iface *water.Interface, sockfd int) {
 			plen, err := syscall.Read(sockfd, buffer2)
 			validateErr(err, "Error reading from zt")
 
-			_, writeErr := iface.Write(buffer2[:plen])
+			_, writeErr := readWriteCloser.Write(buffer2[:plen])
 			validateErr(writeErr, "Error writing to tun")
 
 		}
@@ -186,18 +187,19 @@ func main() {
 	validate(sockfd, "Error in opening socket")
 	defer C.zts_close(sockfd)
 
+	var finalSockfd int
+	var iface *water.Interface
+
 	if len(getOtherIP()) == 0 {
-		iface := setupTun(true)
-
-		newSockfd := bindAndListen(sockfd)
-
-		bridge(iface, newSockfd)
+		iface = setupTun(true)
+		finalSockfd = bindAndListen(sockfd)
 	} else {
-		iface := setupTun(false)
-		sockfd := connectToOther()
-
-		bridge(iface, sockfd)
+		iface = setupTun(false)
+		finalSockfd = connectToOther()
 	}
+
+	bridge(iface.ReadWriteCloser, finalSockfd)
+	defer iface.ReadWriteCloser.Close()
 
 
 	<-setupCleanUpOnInterrupt()
