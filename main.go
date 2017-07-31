@@ -2,16 +2,20 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"os/signal"
-	"unsafe"
-	"syscall"
+	"log"
 	"net"
+	"os"
+	"os/exec"
+	"os/signal"
+	"syscall"
+	"unsafe"
+
+	"github.com/songgao/water"
 )
 
 /*
-#cgo CFLAGS: -I /Users/selva/repos/libzt/examples/cpp/libzt/include
-#cgo darwin LDFLAGS: -L /Users/selva/repos/libzt/examples/cpp/libzt/darwin/ -lzt -lstdc++
+#cgo CFLAGS: -I ./libzt/include
+#cgo darwin LDFLAGS: -L ./libzt/darwin/ -lzt -lstdc++
 
 #include "libzt.h"
 #include <stdlib.h>
@@ -60,9 +64,8 @@ func validate(value C.int, message string) {
 }
 
 func bindAndListen(sockfd C.int) int {
-	//serverSocket := C.struct_sockaddr_in6{sin6_flowinfo: 0, sin6_family: C.AF_INET6, sin6_addr: C.in6addr_any, sin6_port: 7878}
 	serverSocket := syscall.RawSockaddrInet6{Flowinfo: 0, Family: syscall.AF_INET6, Port: PORT}
-	retVal := C.zts_bind(sockfd, (* C.struct_sockaddr)(unsafe.Pointer(&serverSocket)), C.sizeof_struct_sockaddr_in6)
+	retVal := C.zts_bind(sockfd, (*C.struct_sockaddr)(unsafe.Pointer(&serverSocket)), C.sizeof_struct_sockaddr_in6)
 	validate(retVal, "ERROR on binding")
 	fmt.Println("Bind Complete")
 
@@ -71,25 +74,15 @@ func bindAndListen(sockfd C.int) int {
 
 	clientSocket := syscall.RawSockaddrInet6{}
 	clientSocketLength := C.sizeof_struct_sockaddr_in6
-	newSockfd := C.zts_accept(sockfd, (* C.struct_sockaddr)(unsafe.Pointer(&clientSocket)), (* C.socklen_t)(unsafe.Pointer(&clientSocketLength)))
+	newSockfd := C.zts_accept(sockfd, (*C.struct_sockaddr)(unsafe.Pointer(&clientSocket)), (*C.socklen_t)(unsafe.Pointer(&clientSocketLength)))
 	validate(newSockfd, "ERROR on accept")
 	fmt.Println("Accepted")
 
 	clientIpAddress := make([]byte, C.ZT_MAX_IPADDR_LEN)
-	C.inet_ntop(syscall.AF_INET6, unsafe.Pointer(&clientSocket.Addr), (* C.char)(unsafe.Pointer(&clientIpAddress[0])), C.ZT_MAX_IPADDR_LEN)
+	C.inet_ntop(syscall.AF_INET6, unsafe.Pointer(&clientSocket.Addr), (*C.char)(unsafe.Pointer(&clientIpAddress[0])), C.ZT_MAX_IPADDR_LEN)
 	fmt.Printf("Incoming connection from client having IPv6 address: %s\n", string(clientIpAddress[:C.ZT_MAX_IPADDR_LEN]))
 
 	return int(newSockfd)
-}
-func connectSockets(first int, second int, callback func([]byte)) {
-	packet := make([]byte, BUF_SIZE)
-
-	for {
-		plen, _ := syscall.Read(first, packet)
-
-		callback(packet[:plen])
-		syscall.Write(second, packet[:plen])
-	}
 }
 
 func parseIPV6(ipString string) [16]byte {
@@ -99,49 +92,109 @@ func parseIPV6(ipString string) [16]byte {
 	return arr
 }
 
-func main() {
-	fmt.Println("Hello")
+func ifconfig(args ...string) {
+	cmd := exec.Command("ifconfig", args...)
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+	cmd.Stdin = os.Stdin
+	err := cmd.Run()
+	if nil != err {
+		log.Fatalln("Error running command:", err)
+	}
+}
 
+func setupTun(initater bool) *water.Interface {
+	iface, _ := water.New(water.Config{
+		DeviceType: water.TUN,
+	})
+
+	log.Printf("Interface Name: %s\n", iface.Name())
+
+	if initater {
+		ifconfig(iface.Name(), "10.1.0.10", "10.1.0.20", "up")
+	} else {
+		ifconfig(iface.Name(), "10.1.0.20", "10.1.0.10", "up")
+	}
+
+	return iface
+}
+
+func initZT() {
 	C.zts_simple_start(C.CString("./zt"), C.CString(NETWORK_ID))
 
 	ipv4Address := make([]byte, C.ZT_MAX_IPADDR_LEN)
 	ipv6Address := make([]byte, C.ZT_MAX_IPADDR_LEN)
 
-	C.zts_get_ipv4_address(C.CString(NETWORK_ID), (* C.char)(unsafe.Pointer(&ipv4Address[0])), C.ZT_MAX_IPADDR_LEN);
-	fmt.Printf("ipv4 = %s \n", string(ipv4Address[:C.ZT_MAX_IPADDR_LEN]))
+	C.zts_get_ipv4_address(C.CString(NETWORK_ID), (*C.char)(unsafe.Pointer(&ipv4Address[0])), C.ZT_MAX_IPADDR_LEN)
+	log.Printf("ipv4 = %s \n", string(ipv4Address[:C.ZT_MAX_IPADDR_LEN]))
 
-	C.zts_get_ipv6_address(C.CString(NETWORK_ID), (* C.char)(unsafe.Pointer(&ipv6Address[0])), C.ZT_MAX_IPADDR_LEN);
-	fmt.Printf("ipv6 = %s \n", string(ipv6Address[:C.ZT_MAX_IPADDR_LEN]))
+	C.zts_get_ipv6_address(C.CString(NETWORK_ID), (*C.char)(unsafe.Pointer(&ipv6Address[0])), C.ZT_MAX_IPADDR_LEN)
+	log.Printf("ipv6 = %s \n", string(ipv6Address[:C.ZT_MAX_IPADDR_LEN]))
+}
+
+func connectToOther() int {
+	arr := parseIPV6(getOtherIP())
+
+	clientSocket := syscall.RawSockaddrInet6{Flowinfo: 0, Family: syscall.AF_INET6, Port: PORT, Addr: arr}
 
 	sockfd := C.zts_socket(syscall.AF_INET6, syscall.SOCK_STREAM, 0)
+	validate(sockfd, "Error in opening socket")
 
+	retVal := C.zts_connect(sockfd, (*C.struct_sockaddr)(unsafe.Pointer(&clientSocket)), C.sizeof_struct_sockaddr_in6)
+	validate(retVal, "Error in connect client")
+
+	return (int)(sockfd)
+}
+
+func validateErr(err error, message string) {
+	if err != nil {
+		log.Println(message)
+	}
+}
+
+func bridge(iface *water.Interface, sockfd int) {
+	buffer1 := make([]byte, BUF_SIZE)
+	go func() {
+		for {
+			plen, err := iface.Read(buffer1)
+			validateErr(err, "Error reading from tun")
+
+			_, writeErr := syscall.Write(sockfd, buffer1[:plen])
+			validateErr(writeErr, "Error writing to zt")
+		}
+	}()
+
+	buffer2 := make([]byte, BUF_SIZE)
+
+	go func() {
+		for {
+			plen, err := syscall.Read(sockfd, buffer2)
+			validateErr(err, "Error reading from zt")
+
+			_, writeErr := iface.Write(buffer2[:plen])
+			validateErr(writeErr, "Error writing to tun")
+
+		}
+	}()
+}
+
+func main() {
+	initZT()
+
+	sockfd := C.zts_socket(syscall.AF_INET6, syscall.SOCK_STREAM, 0)
 	validate(sockfd, "Error in opening socket")
 
 	if len(getOtherIP()) == 0 {
+		iface := setupTun(true)
+
 		newSockfd := bindAndListen(sockfd)
 
-		go connectSockets(newSockfd, 1, func(payload []byte) {
-			//header, _ := ipv4.ParseHeader(packet[:plen])
-			//fmt.Println("Sending to remote: %+v", header)
-		})
-
-		connectSockets(0, newSockfd, func(payload []byte) {})
+		bridge(iface, newSockfd)
 	} else {
-		arr := parseIPV6(getOtherIP())
-		clientSocket := syscall.RawSockaddrInet6{Flowinfo: 0, Family: syscall.AF_INET6, Port: PORT, Addr: arr}
+		iface := setupTun(false)
+		sockfd := connectToOther()
 
-		sockfd := C.zts_socket(syscall.AF_INET6, syscall.SOCK_STREAM, 0)
-		validate(sockfd, "Error in opening socket")
-
-		retVal := C.zts_connect(sockfd, (* C.struct_sockaddr)(unsafe.Pointer(&clientSocket)), C.sizeof_struct_sockaddr_in6)
-		validate(retVal, "Error in connect client")
-
-		go connectSockets((int)(sockfd), 1, func(payload []byte) {
-			//header, _ := ipv4.ParseHeader(packet[:plen])
-			//fmt.Println("Sending to remote: %+v", header)
-		})
-
-		connectSockets(0, (int)(sockfd), func(payload []byte) {})
+		bridge(iface, sockfd)
 	}
 
 	<-setupCleanUpOnInterrupt()
