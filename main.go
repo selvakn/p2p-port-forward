@@ -180,9 +180,11 @@ func bridge(iface *water.Interface, sockfd int) {
 
 func main() {
 	initZT()
+	defer C.zts_stop()
 
 	sockfd := C.zts_socket(syscall.AF_INET6, syscall.SOCK_STREAM, 0)
 	validate(sockfd, "Error in opening socket")
+	defer C.zts_close(sockfd)
 
 	if len(getOtherIP()) == 0 {
 		iface := setupTun(true)
@@ -196,6 +198,7 @@ func main() {
 
 		bridge(iface, sockfd)
 	}
+
 
 	<-setupCleanUpOnInterrupt()
 }
