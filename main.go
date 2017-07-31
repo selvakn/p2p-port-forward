@@ -10,8 +10,9 @@ import (
 )
 
 /*
-#cgo CFLAGS: -I /Users/selva/repos/libzt/examples/cpp/libzt/include
-#cgo darwin LDFLAGS: -L /Users/selva/repos/libzt/examples/cpp/libzt/darwin/ -lzt -lstdc++
+#cgo CFLAGS: -I ./libzt/include
+#cgo darwin LDFLAGS: -L ./libzt/darwin/ -lzt -lstdc++
+#cgo linux LDFLAGS: -L ./libzt/linux/ -lzt -lstdc++
 
 #include "libzt.h"
 #include <stdlib.h>
@@ -99,6 +100,16 @@ func parseIPV6(ipString string) [16]byte {
 	return arr
 }
 
+func bridge(sockfd int) {
+	go connectSockets(sockfd, 1, func(payload []byte) {
+		fmt.Printf("Received payload of length: %d \n", len(payload))
+	})
+
+	go connectSockets(0, sockfd, func(payload []byte) {
+		fmt.Printf("Sent payload of length: %d \n", len(payload))
+	})
+}
+
 func main() {
 	fmt.Println("Hello")
 
@@ -120,12 +131,7 @@ func main() {
 	if len(getOtherIP()) == 0 {
 		newSockfd := bindAndListen(sockfd)
 
-		go connectSockets(newSockfd, 1, func(payload []byte) {
-			//header, _ := ipv4.ParseHeader(packet[:plen])
-			//fmt.Println("Sending to remote: %+v", header)
-		})
-
-		connectSockets(0, newSockfd, func(payload []byte) {})
+		bridge(newSockfd)
 	} else {
 		arr := parseIPV6(getOtherIP())
 		clientSocket := syscall.RawSockaddrInet6{Flowinfo: 0, Family: syscall.AF_INET6, Port: PORT, Addr: arr}
@@ -136,12 +142,7 @@ func main() {
 		retVal := C.zts_connect(sockfd, (* C.struct_sockaddr)(unsafe.Pointer(&clientSocket)), C.sizeof_struct_sockaddr_in6)
 		validate(retVal, "Error in connect client")
 
-		go connectSockets((int)(sockfd), 1, func(payload []byte) {
-			//header, _ := ipv4.ParseHeader(packet[:plen])
-			//fmt.Println("Sending to remote: %+v", header)
-		})
-
-		connectSockets(0, (int)(sockfd), func(payload []byte) {})
+		bridge((int)(sockfd))
 	}
 
 	<-setupCleanUpOnInterrupt()
