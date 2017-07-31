@@ -3,12 +3,9 @@ package main
 import (
 	"net"
 	"os"
-	"os/exec"
 	"os/signal"
 	"syscall"
 	"unsafe"
-
-	"github.com/songgao/water"
 	"github.com/op/go-logging"
 	"io"
 )
@@ -33,8 +30,18 @@ const PORT = 50718 // 7878
 const BUF_SIZE = 2800
 
 var log = logging.MustGetLogger("tunneler")
+var totalBytesSent = 0
+var totalBytesReceived = 0
 
-func setupCleanUpOnInterrupt() chan bool {
+func reverse(numbers []C.int) []C.int {
+	for i := 0; i < len(numbers)/2; i++ {
+		j := len(numbers) - i - 1
+		numbers[i], numbers[j] = numbers[j], numbers[i]
+	}
+	return numbers
+}
+
+func setupCleanUpOnInterrupt(fdsToClose []C.int) chan bool {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, os.Interrupt)
 
@@ -43,7 +50,11 @@ func setupCleanUpOnInterrupt() chan bool {
 	go func() {
 		for range signalChan {
 			log.Info("\nReceived an interrupt, shutting dow.\n")
-
+			log.Infof("Going to close :%v", fdsToClose)
+			for _, fd := range reverse(fdsToClose) {
+				C.zts_close(fd)
+			}
+			log.Infof("Closing Complete");
 			cleanupDone <- true
 		}
 	}()
@@ -65,7 +76,7 @@ func validate(value C.int, message string) {
 	}
 }
 
-func bindAndListen() (int, int) {
+func bindAndListen(onAccept func(newSockfd C.int)) (C.int) {
 	sockfd := C.zts_socket(syscall.AF_INET6, syscall.SOCK_STREAM, 0)
 	validate(sockfd, "Error in opening socket")
 
@@ -77,14 +88,21 @@ func bindAndListen() (int, int) {
 	C.zts_listen(sockfd, 1)
 	log.Debugf("Listening")
 
-	clientSocket := syscall.RawSockaddrInet6{}
-	clientSocketLength := C.sizeof_struct_sockaddr_in6
-	connSockfd := C.zts_accept(sockfd, (*C.struct_sockaddr)(unsafe.Pointer(&clientSocket)), (*C.socklen_t)(unsafe.Pointer(&clientSocketLength)))
-	validate(connSockfd, "ERROR on accept")
+	//go func() {
+	//	for {
+			clientSocket := syscall.RawSockaddrInet6{}
+			clientSocketLength := C.sizeof_struct_sockaddr_in6
+			connSockfd := C.zts_accept(sockfd, (*C.struct_sockaddr)(unsafe.Pointer(&clientSocket)), (*C.socklen_t)(unsafe.Pointer(&clientSocketLength)))
 
-	log.Info("Accepted incoming connection from client")
+			validate(connSockfd, "ERROR on accept")
 
-	return int(sockfd), int(connSockfd)
+			log.Info("Accepted incoming connection from client")
+
+			onAccept(connSockfd)
+		//}
+	//}()
+
+	return sockfd
 }
 
 func parseIPV6(ipString string) [16]byte {
@@ -92,33 +110,6 @@ func parseIPV6(ipString string) [16]byte {
 	var arr [16]byte
 	copy(arr[:], ip)
 	return arr
-}
-
-func ifconfig(args ...string) {
-	cmd := exec.Command("ifconfig", args...)
-	cmd.Stderr = os.Stderr
-	cmd.Stdout = os.Stdout
-	cmd.Stdin = os.Stdin
-	err := cmd.Run()
-	if nil != err {
-		log.Infof("Error running command:", err)
-	}
-}
-
-func setupTun(initater bool) *water.Interface {
-	iface, _ := water.New(water.Config{
-		DeviceType: water.TUN,
-	})
-
-	log.Infof("Interface Name: %s\n", iface.Name())
-
-	if initater {
-		ifconfig(iface.Name(), "10.1.0.10", "10.1.0.20", "up")
-	} else {
-		ifconfig(iface.Name(), "10.1.0.20", "10.1.0.10", "up")
-	}
-
-	return iface
 }
 
 func initZT() {
@@ -134,7 +125,7 @@ func initZT() {
 	log.Infof("ipv6 = %s \n", string(ipv6Address[:C.ZT_MAX_IPADDR_LEN]))
 }
 
-func connectToOther() int {
+func connectToOther() C.int {
 	arr := parseIPV6(getOtherIP())
 
 	clientSocket := syscall.RawSockaddrInet6{Flowinfo: 0, Family: syscall.AF_INET6, Port: PORT, Addr: arr}
@@ -145,7 +136,7 @@ func connectToOther() int {
 	retVal := C.zts_connect(sockfd, (*C.struct_sockaddr)(unsafe.Pointer(&clientSocket)), C.sizeof_struct_sockaddr_in6)
 	validate(retVal, "Error in connect client")
 
-	return (int)(sockfd)
+	return sockfd
 }
 
 func validateErr(err error, message string) bool {
@@ -155,88 +146,70 @@ func validateErr(err error, message string) bool {
 	return err != nil
 }
 
-func bridge(readWriteCloser io.ReadWriter, sockfd int, oneWay bool, read bool) {
+func bridge(readWriteCloser io.ReadWriteCloser, sockfd int) {
 
-	if !oneWay || read {
-		buffer1 := make([]byte, BUF_SIZE)
-		totalRead := 0
-		totalSent := 0
-
-		go func() {
-			for {
-				rlen, err := readWriteCloser.Read(buffer1)
-				if validateErr(err, "Error reading from tun") {
-					break
-				}
-
-				totalRead += rlen
-				log.Debugf("Total read so far: %d\n", totalRead)
-
-				wlen, writeErr := syscall.Write(sockfd, buffer1[:rlen])
-				if validateErr(writeErr, "Error writing to zt") {
-					break
-				}
-
-				totalSent += wlen
-				log.Debugf("Total sent so far: %d\n", totalSent)
+	buffer1 := make([]byte, BUF_SIZE)
+	go func() {
+		for {
+			rlen, err := readWriteCloser.Read(buffer1)
+			if err == io.EOF || validateErr(err, "Error reading from stream") {
+				readWriteCloser.Close()
+				break
 			}
-		}()
-	}
 
-	if !oneWay || !read {
-		buffer2 := make([]byte, BUF_SIZE)
-		totalReceived := 0
-		totalSaved := 0
-
-		go func() {
-			for {
-				rlen, err := syscall.Read(sockfd, buffer2)
-				if validateErr(err, "Error reading from zt") {
-					break
-				}
-
-				totalReceived += rlen
-				log.Debugf("Total received so far: %d\n", totalReceived)
-
-				wlen, writeErr := readWriteCloser.Write(buffer2[:rlen])
-				if validateErr(writeErr, "Error writing to tun") {
-					break
-				}
-
-				totalSaved += wlen
-				log.Debugf("Total saved so far: %d\n", totalSaved)
-
+			wlen, writeErr := syscall.Write(sockfd, buffer1[:rlen])
+			if validateErr(writeErr, "Error writing to zt") {
+				break
 			}
-		}()
-	}
+
+			totalBytesSent += wlen
+			log.Debugf("Total sent so far: %d\n", totalBytesSent)
+		}
+	}()
+
+	buffer2 := make([]byte, BUF_SIZE)
+	go func() {
+		for {
+			rlen, err := syscall.Read(sockfd, buffer2)
+			if rlen == 0 || validateErr(err, "Error reading from zt") {
+				break
+			}
+
+			wlen, writeErr := readWriteCloser.Write(buffer2[:rlen])
+			if validateErr(writeErr, "Error writing to stream") {
+				break
+			}
+
+			totalBytesReceived += wlen
+			log.Debugf("Total received so far: %d\n", totalBytesReceived)
+		}
+	}()
 }
 
 func main() {
 	initZT()
 	defer C.zts_stop()
 
+	var allFDs []C.int
+
 	if len(getOtherIP()) == 0 {
-		tunInterfaceStream := setupTun(true).ReadWriteCloser
-		//tunInterfaceStream, _ := os.Create("/tmp/test")
+		sockfd := bindAndListen(func(finalSockfd C.int) {
+			conn, _ := net.Dial("tcp", "localhost:22")
 
-
-		sockfd, finalSockfd := bindAndListen()
-
-		defer syscall.Close(sockfd)
-		defer syscall.Close(finalSockfd)
-
-		bridge(tunInterfaceStream, finalSockfd, false, false)
-		defer tunInterfaceStream.Close()
+			bridge(conn, (int)(finalSockfd))
+			allFDs = append(allFDs, finalSockfd)
+		})
+		defer C.zts_close(sockfd)
 	} else {
-		tunInterfaceStream := setupTun(false).ReadWriteCloser
-		//tunInterfaceStream, _ := os.Open("/Users/selva/repos/libzt/examples/cpp/main")
-
 		sockfd := connectToOther()
-		defer syscall.Close(sockfd)
+		defer C.zts_close(sockfd)
 
-		bridge(tunInterfaceStream, sockfd, false, true)
-		defer tunInterfaceStream.Close()
+		ln, _ := net.Listen("tcp", ":2222")
+		defer ln.Close()
+
+		conn, _ := ln.Accept()
+		bridge(conn, (int)(sockfd))
 	}
 
-	<-setupCleanUpOnInterrupt()
+	<-setupCleanUpOnInterrupt(allFDs)
 }
