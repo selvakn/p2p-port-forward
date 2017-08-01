@@ -22,22 +22,9 @@ func main() {
 	if len(forwarder.GetOtherIP()) == 0 {
 		ztListener, _ := libzt.Listen6(PORT)
 
-		go func() {
-			for {
-				ztConn, err := ztListener.Accept()
-				if err != nil {
-					log.Error(err)
-					return
-				}
-				conn, _ := net.Dial("tcp", "localhost:22")
-				if err != nil {
-					log.Error(err)
-					return
-				}
-
-				go utils.Sync(ztConn, conn)
-			}
-		}()
+		go utils.Sync(func() (net.Conn, error) {
+			return net.Dial("tcp", "localhost:22")
+		}, ztListener.Accept)
 
 		<-utils.SetupCleanUpOnInterrupt(func() {
 			ztListener.Close()
@@ -46,27 +33,13 @@ func main() {
 	} else {
 		ln, _ := net.Listen("tcp", ":2222")
 
-		go func() {
-			for {
-				conn, err := ln.Accept()
-				if err != nil {
-					log.Error(err)
-					return
-				}
-				ztConn, err := libzt.Connect6(forwarder.GetOtherIP(), PORT)
-				if err != nil {
-					log.Error(err)
-					return
-				}
-
-				go utils.Sync(conn, ztConn)
-			}
-		}()
+		go utils.Sync(ln.Accept, func() (net.Conn, error) {
+			return libzt.Connect6(forwarder.GetOtherIP(), PORT)
+		})
 
 		<-utils.SetupCleanUpOnInterrupt(func() {
 			ln.Close()
 		})
 
 	}
-
 }
