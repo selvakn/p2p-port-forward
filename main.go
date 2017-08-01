@@ -33,15 +33,7 @@ var log = logging.MustGetLogger("tunneler")
 var totalBytesSent = 0
 var totalBytesReceived = 0
 
-func reverse(numbers []C.int) []C.int {
-	for i := 0; i < len(numbers)/2; i++ {
-		j := len(numbers) - i - 1
-		numbers[i], numbers[j] = numbers[j], numbers[i]
-	}
-	return numbers
-}
-
-func setupCleanUpOnInterrupt(fdsToClose []C.int) chan bool {
+func setupCleanUpOnInterrupt() chan bool {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, os.Interrupt)
 
@@ -50,11 +42,6 @@ func setupCleanUpOnInterrupt(fdsToClose []C.int) chan bool {
 	go func() {
 		for range signalChan {
 			log.Info("\nReceived an interrupt, shutting dow.\n")
-			log.Infof("Going to close :%v", fdsToClose)
-			for _, fd := range reverse(fdsToClose) {
-				C.zts_close(fd)
-			}
-			log.Infof("Closing Complete");
 			cleanupDone <- true
 		}
 	}()
@@ -76,7 +63,7 @@ func validate(value C.int, message string) {
 	}
 }
 
-func bindAndListen(onAccept func(newSockfd C.int)) (C.int) {
+func bindAndListen() (C.int) {
 	sockfd := C.zts_socket(syscall.AF_INET6, syscall.SOCK_STREAM, 0)
 	validate(sockfd, "Error in opening socket")
 
@@ -88,21 +75,19 @@ func bindAndListen(onAccept func(newSockfd C.int)) (C.int) {
 	C.zts_listen(sockfd, 1)
 	log.Debugf("Listening")
 
-	//go func() {
-	//	for {
-			clientSocket := syscall.RawSockaddrInet6{}
-			clientSocketLength := C.sizeof_struct_sockaddr_in6
-			connSockfd := C.zts_accept(sockfd, (*C.struct_sockaddr)(unsafe.Pointer(&clientSocket)), (*C.socklen_t)(unsafe.Pointer(&clientSocketLength)))
-
-			validate(connSockfd, "ERROR on accept")
-
-			log.Info("Accepted incoming connection from client")
-
-			onAccept(connSockfd)
-		//}
-	//}()
-
 	return sockfd
+}
+
+func accept(sockfd C.int) C.int {
+	clientSocket := syscall.RawSockaddrInet6{}
+	clientSocketLength := C.sizeof_struct_sockaddr_in6
+	connSockfd := C.zts_accept(sockfd, (*C.struct_sockaddr)(unsafe.Pointer(&clientSocket)), (*C.socklen_t)(unsafe.Pointer(&clientSocketLength)))
+
+	validate(connSockfd, "ERROR on accept")
+
+	log.Info("Accepted incoming connection from client")
+
+	return connSockfd
 }
 
 func parseIPV6(ipString string) [16]byte {
@@ -146,7 +131,7 @@ func validateErr(err error, message string) bool {
 	return err != nil
 }
 
-func bridge(readWriteCloser io.ReadWriteCloser, sockfd int) {
+func bridge(readWriteCloser io.ReadWriteCloser, sockfd C.int) {
 
 	buffer1 := make([]byte, BUF_SIZE)
 	go func() {
@@ -157,7 +142,7 @@ func bridge(readWriteCloser io.ReadWriteCloser, sockfd int) {
 				break
 			}
 
-			wlen, writeErr := syscall.Write(sockfd, buffer1[:rlen])
+			wlen, writeErr := syscall.Write((int)(sockfd), buffer1[:rlen])
 			if validateErr(writeErr, "Error writing to zt") {
 				break
 			}
@@ -170,7 +155,8 @@ func bridge(readWriteCloser io.ReadWriteCloser, sockfd int) {
 	buffer2 := make([]byte, BUF_SIZE)
 	go func() {
 		for {
-			rlen, err := syscall.Read(sockfd, buffer2)
+			rlen, err := syscall.Read((int)(sockfd), buffer2)
+
 			if rlen == 0 || validateErr(err, "Error reading from zt") {
 				break
 			}
@@ -190,16 +176,18 @@ func main() {
 	initZT()
 	defer C.zts_stop()
 
-	var allFDs []C.int
-
 	if len(getOtherIP()) == 0 {
-		sockfd := bindAndListen(func(finalSockfd C.int) {
-			conn, _ := net.Dial("tcp", "localhost:22")
-
-			bridge(conn, (int)(finalSockfd))
-			allFDs = append(allFDs, finalSockfd)
-		})
+		sockfd := bindAndListen()
 		defer C.zts_close(sockfd)
+
+		//go func() {
+		//	for {
+				newSockfd := accept(sockfd)
+
+				conn, _ := net.Dial("tcp", "localhost:22")
+				bridge(conn, newSockfd)
+			//}
+		//}()
 	} else {
 		sockfd := connectToOther()
 		defer C.zts_close(sockfd)
@@ -208,8 +196,8 @@ func main() {
 		defer ln.Close()
 
 		conn, _ := ln.Accept()
-		bridge(conn, (int)(sockfd))
+		bridge(conn, sockfd)
 	}
 
-	<-setupCleanUpOnInterrupt(allFDs)
+	<-setupCleanUpOnInterrupt()
 }
