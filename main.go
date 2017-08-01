@@ -2,7 +2,6 @@ package main
 
 import (
 	"net"
-	"syscall"
 	"./forwarder"
 	"./listener"
 	"./utils"
@@ -22,17 +21,17 @@ func main() {
 	log.Infof("ipv6 = %s \n", libzt.GetIpv6Address(NETWORK_ID))
 
 	if len(forwarder.GetOtherIP()) == 0 {
-		sockfd := listener.BindAndListen(PORT)
+		ztListener, _ := libzt.Listen6(PORT)
 
 		go func() {
 			for {
-				newSockfd := listener.Accept(sockfd)
-				go listener.HandleIncoming(newSockfd)
+				conn, _ := ztListener.Accept()
+				go listener.HandleIncoming(conn)
 			}
 		}()
 
 		<-utils.SetupCleanUpOnInterrupt(func() {
-			syscall.Close((int)(sockfd))
+			ztListener.Close()
 		})
 
 	} else {

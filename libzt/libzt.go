@@ -12,6 +12,8 @@ import "C"
 import (
 	"unsafe"
 	"syscall"
+	"net"
+	"errors"
 )
 
 const ZT_MAX_IPADDR_LEN = C.ZT_MAX_IPADDR_LEN
@@ -38,6 +40,26 @@ func Close(fd int) int {
 	return (int)(C.zts_close(cint(fd)))
 }
 
+func Listen6(port uint16) (net.Listener, error) {
+	fd := Socket(syscall.AF_INET6, syscall.SOCK_STREAM, 0)
+	if fd < 0 {
+		return nil, errors.New("Error in opening socket")
+	}
+
+	serverSocket := syscall.RawSockaddrInet6{Flowinfo: 0, Family: syscall.AF_INET6, Port: port}
+	retVal := Bind6(fd, serverSocket)
+	if retVal < 0 {
+		return nil, errors.New("ERROR on binding")
+	}
+
+	retVal = Listen(fd, 1)
+	if retVal < 0 {
+		return nil, errors.New("ERROR listening")
+	}
+
+	return &TCP6Listener{fd: fd}, nil
+}
+
 func Socket(family int, socketType int, protocol int) int {
 	return (int)(C.zts_socket(cint(family), cint(socketType), cint(protocol)))
 }
@@ -50,10 +72,10 @@ func Bind6(fd int, sockerAddr syscall.RawSockaddrInet6) int {
 	return (int)(C.zts_bind(cint(fd), (*C.struct_sockaddr)(unsafe.Pointer(&sockerAddr)), syscall.SizeofSockaddrInet6))
 }
 
-func Accept6(fd int) (int, syscall.RawSockaddrInet6, int) {
-	sockerAddr := syscall.RawSockaddrInet6{}
+func Accept6(fd int) (int, syscall.RawSockaddrInet6) {
+	socketAddr := syscall.RawSockaddrInet6{}
 	socketLength := syscall.SizeofSockaddrInet6
-	return (int)(C.zts_accept(cint(fd), (*C.struct_sockaddr)(unsafe.Pointer(&sockerAddr)), (*C.socklen_t)(unsafe.Pointer(&socketLength)))), sockerAddr, socketLength
+	return (int)(C.zts_accept(cint(fd), (*C.struct_sockaddr)(unsafe.Pointer(&socketAddr)), (*C.socklen_t)(unsafe.Pointer(&socketLength)))), socketAddr
 }
 
 func Listen(fd int, backlog int) int {
