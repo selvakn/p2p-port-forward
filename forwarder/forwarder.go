@@ -2,9 +2,6 @@ package forwarder
 
 import (
 	"os"
-	"net"
-	"../libzt"
-	"io"
 )
 
 
@@ -15,14 +12,3 @@ func GetOtherIP() string {
 		return ""
 	}
 }
-
-func HandleOutgoing(conn net.Conn, port uint16) {
-	defer conn.Close()
-
-	ztConn, _ := libzt.Connect6(GetOtherIP(), port)
-	defer conn.Close()
-
-	go io.Copy(conn, ztConn)
-	io.Copy(ztConn, conn)
-}
-

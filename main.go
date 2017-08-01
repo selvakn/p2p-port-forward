@@ -3,7 +3,6 @@ package main
 import (
 	"net"
 	"./forwarder"
-	"./listener"
 	"./utils"
 	"./libzt"
 	"github.com/op/go-logging"
@@ -25,8 +24,18 @@ func main() {
 
 		go func() {
 			for {
-				conn, _ := ztListener.Accept()
-				go listener.HandleIncoming(conn)
+				ztConn, err := ztListener.Accept()
+				if err != nil {
+					log.Error(err)
+					return
+				}
+				conn, _ := net.Dial("tcp", "localhost:22")
+				if err != nil {
+					log.Error(err)
+					return
+				}
+
+				go utils.Sync(ztConn, conn)
 			}
 		}()
 
@@ -40,9 +49,17 @@ func main() {
 		go func() {
 			for {
 				conn, err := ln.Accept()
-				if err == nil {
-					go forwarder.HandleOutgoing(conn, PORT)
+				if err != nil {
+					log.Error(err)
+					return
 				}
+				ztConn, err := libzt.Connect6(forwarder.GetOtherIP(), PORT)
+				if err != nil {
+					log.Error(err)
+					return
+				}
+
+				go utils.Sync(conn, ztConn)
 			}
 		}()
 
