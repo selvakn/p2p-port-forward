@@ -13,6 +13,7 @@ import (
 /*
 #cgo CFLAGS: -I ./libzt/include
 #cgo darwin LDFLAGS: -L ./libzt/darwin/ -lzt -lstdc++
+#cgo linux LDFLAGS: -L ./libzt/linux/ -lzt -lstdc++
 
 #include "libzt.h"
 #include <stdlib.h>
