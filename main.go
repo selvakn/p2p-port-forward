@@ -33,7 +33,7 @@ var log = logging.MustGetLogger("tunneler")
 var totalBytesSent = 0
 var totalBytesReceived = 0
 
-func setupCleanUpOnInterrupt() chan bool {
+func setupCleanUpOnInterrupt(callback func()) chan bool {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, os.Interrupt)
 
@@ -42,6 +42,8 @@ func setupCleanUpOnInterrupt() chan bool {
 	go func() {
 		for range signalChan {
 			log.Info("\nReceived an interrupt, shutting dow.\n")
+			callback()
+
 			cleanupDone <- true
 		}
 	}()
@@ -131,73 +133,99 @@ func validateErr(err error, message string) bool {
 	return err != nil
 }
 
-func bridge(readWriteCloser io.ReadWriteCloser, sockfd C.int) {
 
-	buffer1 := make([]byte, BUF_SIZE)
-	go func() {
-		for {
-			rlen, err := readWriteCloser.Read(buffer1)
-			if err == io.EOF || validateErr(err, "Error reading from stream") {
-				readWriteCloser.Close()
-				break
-			}
+func receiveFrom(toWriter io.Writer, fromSockFd C.int) {
+	buffer := make([]byte, BUF_SIZE)
+	for {
+		rlen, err := syscall.Read((int)(fromSockFd), buffer)
 
-			wlen, writeErr := syscall.Write((int)(sockfd), buffer1[:rlen])
-			if validateErr(writeErr, "Error writing to zt") {
-				break
-			}
-
-			totalBytesSent += wlen
-			log.Debugf("Total sent so far: %d\n", totalBytesSent)
+		if rlen == 0 || validateErr(err, "Error reading from zt") {
+			break
 		}
-	}()
 
-	buffer2 := make([]byte, BUF_SIZE)
-	go func() {
-		for {
-			rlen, err := syscall.Read((int)(sockfd), buffer2)
-
-			if rlen == 0 || validateErr(err, "Error reading from zt") {
-				break
-			}
-
-			wlen, writeErr := readWriteCloser.Write(buffer2[:rlen])
-			if validateErr(writeErr, "Error writing to stream") {
-				break
-			}
-
-			totalBytesReceived += wlen
-			log.Debugf("Total received so far: %d\n", totalBytesReceived)
+		wlen, writeErr := toWriter.Write(buffer[:rlen])
+		if validateErr(writeErr, "Error writing to stream") {
+			break
 		}
-	}()
+
+		totalBytesReceived += wlen
+		log.Debugf("Total received so far: %d\n", totalBytesReceived)
+	}
+}
+
+func sendTo(toSockfd C.int, fromReader io.Reader) {
+	buffer := make([]byte, BUF_SIZE)
+	for {
+		rlen, err := fromReader.Read(buffer)
+		if err == io.EOF || validateErr(err, "Error reading from stream") {
+			log.Info("Stream conn closed")
+			break
+		}
+
+		wlen, writeErr := syscall.Write((int)(toSockfd), buffer[:rlen])
+		if validateErr(writeErr, "Error writing to zt") {
+			break
+		}
+
+		totalBytesSent += wlen
+		log.Debugf("Total sent so far: %d\n", totalBytesSent)
+	}
+}
+
+
+func handleIncoming(sockfd C.int) {
+	//defer C.zts_close(sockfd)
+
+	conn, _ := net.Dial("tcp", "localhost:22")
+	defer conn.Close()
+
+	go receiveFrom(conn, sockfd)
+	sendTo(sockfd, conn)
+}
+
+func handleOutgoing(conn net.Conn) {
+	defer conn.Close()
+
+	sockfd := connectToOther()
+	//defer C.zts_close(sockfd)
+
+	go receiveFrom(conn, sockfd)
+	sendTo(sockfd, conn)
 }
 
 func main() {
 	initZT()
-	defer C.zts_stop()
 
 	if len(getOtherIP()) == 0 {
 		sockfd := bindAndListen()
-		defer C.zts_close(sockfd)
 
-		//go func() {
-		//	for {
+		go func() {
+			for {
 				newSockfd := accept(sockfd)
+				go handleIncoming(newSockfd)
+			}
+		}()
 
-				conn, _ := net.Dial("tcp", "localhost:22")
-				bridge(conn, newSockfd)
-			//}
-		//}()
+		<-setupCleanUpOnInterrupt(func() {
+			syscall.Close((int)(sockfd))
+		})
+
 	} else {
-		sockfd := connectToOther()
-		defer C.zts_close(sockfd)
-
 		ln, _ := net.Listen("tcp", ":2222")
-		defer ln.Close()
 
-		conn, _ := ln.Accept()
-		bridge(conn, sockfd)
+		go func() {
+			for {
+				conn, err := ln.Accept()
+				if err == nil {
+					go handleOutgoing(conn)
+				}
+			}
+		}()
+
+		<-setupCleanUpOnInterrupt(func() {
+			ln.Close()
+		})
+
 	}
 
-	<-setupCleanUpOnInterrupt()
 }
