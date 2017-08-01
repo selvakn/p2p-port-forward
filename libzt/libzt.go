@@ -47,12 +47,12 @@ func Listen6(port uint16) (net.Listener, error) {
 	}
 
 	serverSocket := syscall.RawSockaddrInet6{Flowinfo: 0, Family: syscall.AF_INET6, Port: port}
-	retVal := Bind6(fd, serverSocket)
+	retVal := bind6(fd, serverSocket)
 	if retVal < 0 {
 		return nil, errors.New("ERROR on binding")
 	}
 
-	retVal = Listen(fd, 1)
+	retVal = listen(fd, 1)
 	if retVal < 0 {
 		return nil, errors.New("ERROR listening")
 	}
@@ -60,28 +60,52 @@ func Listen6(port uint16) (net.Listener, error) {
 	return &TCP6Listener{fd: fd}, nil
 }
 
+
+func Connect6(ip string, port uint16) (net.Conn, error){
+	clientSocket := syscall.RawSockaddrInet6{Flowinfo: 0, Family: syscall.AF_INET6, Port: port, Addr: parseIPV6(ip)}
+
+	fd := Socket(syscall.AF_INET6, syscall.SOCK_STREAM, 0)
+	if fd < 0 {
+		return nil, errors.New("Error in opening socket")
+	}
+
+	retVal := (int)(C.zts_connect(cint(fd), (*C.struct_sockaddr)(unsafe.Pointer(&clientSocket)), syscall.SizeofSockaddrInet6))
+	if retVal < 0 {
+		return nil, errors.New("Unable to connect")
+	}
+
+	conn := &Connection{
+		fd: fd,
+	}
+	return conn, nil
+}
+
 func Socket(family int, socketType int, protocol int) int {
 	return (int)(C.zts_socket(cint(family), cint(socketType), cint(protocol)))
 }
 
-func Connect6(fd int, socketAddr syscall.RawSockaddrInet6) int {
-	return (int)(C.zts_connect(cint(fd), (*C.struct_sockaddr)(unsafe.Pointer(&socketAddr)), syscall.SizeofSockaddrInet6))
+func listen(fd int, backlog int) int {
+	return (int)(C.zts_listen(cint(fd), cint(backlog)))
 }
 
-func Bind6(fd int, sockerAddr syscall.RawSockaddrInet6) int {
+func bind6(fd int, sockerAddr syscall.RawSockaddrInet6) int {
 	return (int)(C.zts_bind(cint(fd), (*C.struct_sockaddr)(unsafe.Pointer(&sockerAddr)), syscall.SizeofSockaddrInet6))
 }
 
-func Accept6(fd int) (int, syscall.RawSockaddrInet6) {
+func accept6(fd int) (int, syscall.RawSockaddrInet6) {
 	socketAddr := syscall.RawSockaddrInet6{}
 	socketLength := syscall.SizeofSockaddrInet6
 	return (int)(C.zts_accept(cint(fd), (*C.struct_sockaddr)(unsafe.Pointer(&socketAddr)), (*C.socklen_t)(unsafe.Pointer(&socketLength)))), socketAddr
 }
 
-func Listen(fd int, backlog int) int {
-	return (int)(C.zts_listen(cint(fd), cint(backlog)))
-}
-
 func cint(value int) C.int {
 	return (C.int)(value)
 }
+
+func parseIPV6(ipString string) [16]byte {
+	ip := net.ParseIP(ipString)
+	var arr [16]byte
+	copy(arr[:], ip)
+	return arr
+}
+

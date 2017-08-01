@@ -11,7 +11,7 @@ type TCP6Listener struct {
 }
 
 func (l *TCP6Listener) Accept() (net.Conn, error) {
-	acceptedFd, _ := Accept6(l.fd)
+	acceptedFd, _ := accept6(l.fd)
 	if acceptedFd < 0 {
 		return nil, errors.New("Unable to accept new connection")
 	}
@@ -29,3 +29,5 @@ func (l *TCP6Listener) Close() error {
 func (l *TCP6Listener) Addr() net.Addr {
 	return nil //TODO: Implement
 }
+
+

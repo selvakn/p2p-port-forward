@@ -7,7 +7,7 @@ import (
 )
 
 type Connection struct {
-	fd         int
+	fd int
 }
 
 func (c *Connection) Read(b []byte) (n int, err error) {
@@ -21,7 +21,6 @@ func (c *Connection) Write(b []byte) (n int, err error) {
 func (c *Connection) Close() error {
 	return syscall.Close(c.fd)
 }
-
 
 func (c *Connection) LocalAddr() net.Addr {
 	return nil // TODO: Implement
