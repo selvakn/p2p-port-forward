@@ -2,9 +2,9 @@ package main
 
 import (
 	"net"
-	"./forwarder"
-	"./utils"
-	"./libzt"
+	"p2p-port-forward/forwarder"
+	"p2p-port-forward/utils"
+	"p2p-port-forward/libzt"
 	"github.com/op/go-logging"
 )
 
