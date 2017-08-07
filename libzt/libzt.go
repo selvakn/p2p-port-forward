@@ -34,14 +34,8 @@ func GetIpv6Address(networkId string) string {
 	return string(address)
 }
 
-// TODO: Return err as second value
-
-func Close(fd int) int {
-	return (int)(C.zts_close(cint(fd)))
-}
-
 func Listen6(port uint16) (net.Listener, error) {
-	fd := Socket(syscall.AF_INET6, syscall.SOCK_STREAM, 0)
+	fd := socket(syscall.AF_INET6, syscall.SOCK_STREAM, 0)
 	if fd < 0 {
 		return nil, errors.New("Error in opening socket")
 	}
@@ -60,11 +54,10 @@ func Listen6(port uint16) (net.Listener, error) {
 	return &TCP6Listener{fd: fd}, nil
 }
 
-
 func Connect6(ip string, port uint16) (net.Conn, error){
 	clientSocket := syscall.RawSockaddrInet6{Flowinfo: 0, Family: syscall.AF_INET6, Port: port, Addr: parseIPV6(ip)}
 
-	fd := Socket(syscall.AF_INET6, syscall.SOCK_STREAM, 0)
+	fd := socket(syscall.AF_INET6, syscall.SOCK_STREAM, 0)
 	if fd < 0 {
 		return nil, errors.New("Error in opening socket")
 	}
@@ -80,7 +73,12 @@ func Connect6(ip string, port uint16) (net.Conn, error){
 	return conn, nil
 }
 
-func Socket(family int, socketType int, protocol int) int {
+
+func close(fd int) int {
+	return (int)(C.zts_close(cint(fd)))
+}
+
+func socket(family int, socketType int, protocol int) int {
 	return (int)(C.zts_socket(cint(family), cint(socketType), cint(protocol)))
 }
 
