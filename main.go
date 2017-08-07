@@ -6,6 +6,8 @@ import (
 	"p2p-port-forward/utils"
 	"p2p-port-forward/libzt"
 	"github.com/op/go-logging"
+	"fmt"
+	"p2p-port-forward/listener"
 )
 
 var log = logging.MustGetLogger("util")
@@ -14,7 +16,7 @@ const PORT = 50718 // 7878
 const NETWORK_ID = "8056c2e21c000001"
 
 func dialLocalService() (net.Conn, error) {
-	return net.Dial("tcp", "localhost:22")
+	return net.Dial("tcp", fmt.Sprintf("localhost:%s", listener.LocalPortToListen()))
 }
 
 func dialRemoteThroughTunnel() (net.Conn, error) {
@@ -36,7 +38,7 @@ func main() {
 		})
 
 	} else {
-		ln, _ := net.Listen("tcp", ":2222")
+		ln, _ := net.Listen("tcp", fmt.Sprintf(":%s", forwarder.LocalPortToForward()))
 
 		go utils.Sync(ln.Accept, dialRemoteThroughTunnel)
 
