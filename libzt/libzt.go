@@ -2,8 +2,8 @@ package libzt
 
 /*
 #cgo CFLAGS: -I ./include
-#cgo darwin LDFLAGS: -L ${SRCDIR}/darwin/ -lzt -lstdc++
-#cgo linux LDFLAGS: -L ${SRCDIR}/linux/ -lzt -lstdc++
+#cgo darwin LDFLAGS: -L ${SRCDIR}/darwin/ -lzt -lstdc++ -lm -std=c++11
+#cgo linux LDFLAGS: -L ${SRCDIR}/linux/ -lzt -lstdc++ -lm -std=c++11
 
 #include "libzt.h"
 #include <netdb.h>
