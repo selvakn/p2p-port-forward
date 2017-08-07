@@ -14,33 +14,41 @@ import (
 	"syscall"
 	"net"
 	"errors"
+	"encoding/binary"
 )
 
 const ZT_MAX_IPADDR_LEN = C.ZT_MAX_IPADDR_LEN
 
-func SimpleStart(homePath, networkId string) {
-	C.zts_simple_start(C.CString(homePath), C.CString(networkId))
+type ZT struct {
+	id       string
+	homePath string
 }
 
-func GetIpv4Address(networkId string) string {
+func Init(id string, homePath string) (*ZT) {
+	zt := &ZT{id: id, homePath: homePath }
+	C.zts_simple_start(C.CString(homePath), C.CString(id))
+	return zt
+}
+
+func (zt *ZT) GetIPv4Address() string {
 	address := make([]byte, ZT_MAX_IPADDR_LEN)
-	C.zts_get_ipv4_address(C.CString(networkId), (*C.char)(unsafe.Pointer(&address[0])), C.ZT_MAX_IPADDR_LEN)
+	C.zts_get_ipv4_address(C.CString(zt.id), (*C.char)(unsafe.Pointer(&address[0])), C.ZT_MAX_IPADDR_LEN)
 	return string(address)
 }
 
-func GetIpv6Address(networkId string) string {
+func (zt *ZT) GetIPv6Address() string {
 	address := make([]byte, ZT_MAX_IPADDR_LEN)
-	C.zts_get_ipv6_address(C.CString(networkId), (*C.char)(unsafe.Pointer(&address[0])), C.ZT_MAX_IPADDR_LEN)
+	C.zts_get_ipv6_address(C.CString(zt.id), (*C.char)(unsafe.Pointer(&address[0])), C.ZT_MAX_IPADDR_LEN)
 	return string(address)
 }
 
-func Listen6(port uint16) (net.Listener, error) {
+func (zt *ZT) Listen6(port uint16) (net.Listener, error) {
 	fd := socket(syscall.AF_INET6, syscall.SOCK_STREAM, 0)
 	if fd < 0 {
 		return nil, errors.New("Error in opening socket")
 	}
 
-	serverSocket := syscall.RawSockaddrInet6{Flowinfo: 0, Family: syscall.AF_INET6, Port: port}
+	serverSocket := syscall.RawSockaddrInet6{Flowinfo: 0, Family: syscall.AF_INET6, Port: htonl(port)}
 	retVal := bind6(fd, serverSocket)
 	if retVal < 0 {
 		return nil, errors.New("ERROR on binding")
@@ -54,8 +62,8 @@ func Listen6(port uint16) (net.Listener, error) {
 	return &TCP6Listener{fd: fd}, nil
 }
 
-func Connect6(ip string, port uint16) (net.Conn, error){
-	clientSocket := syscall.RawSockaddrInet6{Flowinfo: 0, Family: syscall.AF_INET6, Port: port, Addr: parseIPV6(ip)}
+func (zt *ZT) Connect6(ip string, port uint16) (net.Conn, error) {
+	clientSocket := syscall.RawSockaddrInet6{Flowinfo: 0, Family: syscall.AF_INET6, Port: htonl(port), Addr: parseIPV6(ip)}
 
 	fd := socket(syscall.AF_INET6, syscall.SOCK_STREAM, 0)
 	if fd < 0 {
@@ -73,6 +81,11 @@ func Connect6(ip string, port uint16) (net.Conn, error){
 	return conn, nil
 }
 
+func htonl(number uint16) uint16 {
+	bytes := make([]byte, 2)
+	binary.BigEndian.PutUint16(bytes, number)
+	return *(*uint16)(unsafe.Pointer(&bytes[0]))
+}
 
 func close(fd int) int {
 	return (int)(C.zts_close(cint(fd)))
@@ -106,4 +119,3 @@ func parseIPV6(ipString string) [16]byte {
 	copy(arr[:], ip)
 	return arr
 }
-

@@ -31,10 +31,3 @@ func Validate(value int, message string) {
 		os.Exit(1)
 	}
 }
-
-func ValidateErr(err error, message string) bool {
-	if err != nil {
-		log.Infof("%s: %v\n", message, err)
-	}
-	return err != nil
-}

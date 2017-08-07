@@ -12,25 +12,27 @@ import (
 
 var log = logging.MustGetLogger("util")
 
-const PORT = 50718 // 7878
+const PORT = 7878
 const NETWORK_ID = "8056c2e21c000001"
 
 func dialLocalService() (net.Conn, error) {
 	return net.Dial("tcp", fmt.Sprintf("localhost:%s", listener.LocalPortToListen()))
 }
 
-func dialRemoteThroughTunnel() (net.Conn, error) {
-	return libzt.Connect6(forwarder.GetOtherIP(), PORT)
+func dialRemoteThroughTunnel(zt *libzt.ZT) func() (net.Conn, error) {
+	return func() (net.Conn, error) {
+		return zt.Connect6(forwarder.GetOtherIP(), PORT)
+	}
 }
 
 func main() {
-	libzt.SimpleStart("./zt", NETWORK_ID)
+	zt := libzt.Init(NETWORK_ID, "./zt")
 
-	log.Infof("ipv4 = %s \n", libzt.GetIpv4Address(NETWORK_ID))
-	log.Infof("ipv6 = %s \n", libzt.GetIpv6Address(NETWORK_ID))
+	log.Infof("ipv4 = %s \n", zt.GetIPv4Address())
+	log.Infof("ipv6 = %s \n", zt.GetIPv6Address())
 
 	if len(forwarder.GetOtherIP()) == 0 {
-		ztListener, _ := libzt.Listen6(PORT)
+		ztListener, _ := zt.Listen6(PORT)
 		go utils.Sync(dialLocalService, ztListener.Accept)
 
 		<-utils.SetupCleanUpOnInterrupt(func() {
@@ -40,7 +42,7 @@ func main() {
 	} else {
 		ln, _ := net.Listen("tcp", fmt.Sprintf(":%s", forwarder.LocalPortToForward()))
 
-		go utils.Sync(ln.Accept, dialRemoteThroughTunnel)
+		go utils.Sync(ln.Accept, dialRemoteThroughTunnel(zt))
 
 		<-utils.SetupCleanUpOnInterrupt(func() {
 			ln.Close()
