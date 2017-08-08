@@ -5,12 +5,11 @@ import (
 	"p2p-port-forward/forwarder"
 	"p2p-port-forward/utils"
 	"p2p-port-forward/libzt"
-	"github.com/op/go-logging"
 	"fmt"
 	"p2p-port-forward/listener"
+	"github.com/google/logger"
+	"os"
 )
-
-var log = logging.MustGetLogger("util")
 
 const PORT = 7878
 const NETWORK_ID = "8056c2e21c000001"
@@ -26,10 +25,12 @@ func dialRemoteThroughTunnel(zt *libzt.ZT) func() (net.Conn, error) {
 }
 
 func main() {
+	logger.Init("p2p-port-forward", false, false, os.Stdout)
+
 	zt := libzt.Init(NETWORK_ID, "./zt")
 
-	log.Infof("ipv4 = %v \n", zt.GetIPv4Address().String())
-	log.Infof("ipv6 = %v \n", zt.GetIPv6Address().String())
+	logger.Infof("ipv4 = %v \n", zt.GetIPv4Address().String())
+	logger.Infof("ipv6 = %v \n", zt.GetIPv6Address().String())
 
 	if len(forwarder.GetOtherIP()) == 0 {
 		ztListener, _ := zt.Listen6(PORT)

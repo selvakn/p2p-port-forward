@@ -3,10 +3,8 @@ package utils
 import (
 	"os"
 	"os/signal"
-	"github.com/op/go-logging"
+	"github.com/google/logger"
 )
-
-var log = logging.MustGetLogger("util")
 
 func SetupCleanUpOnInterrupt(callback func()) chan bool {
 	signalChan := make(chan os.Signal, 1)
@@ -16,7 +14,7 @@ func SetupCleanUpOnInterrupt(callback func()) chan bool {
 
 	go func() {
 		for range signalChan {
-			log.Info("\nReceived an interrupt, shutting dow.\n")
+			logger.Info("\nReceived an interrupt, shutting dow.\n")
 			callback()
 
 			cleanupDone <- true
@@ -27,7 +25,7 @@ func SetupCleanUpOnInterrupt(callback func()) chan bool {
 
 func Validate(value int, message string) {
 	if value < 0 {
-		log.Error(message)
+		logger.Error(message)
 		os.Exit(1)
 	}
 }
