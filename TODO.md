@@ -1,10 +1,8 @@
 
-* Easy way to pass the ip to the other party for connecting
+- [ ] Easy way to pass the ip to the other party for connecting
 
-* pub/private setup and cleanup for easy ssh 
+- [x] Dont use 'earth' network, use adhoc networks
 
-* Dont use 'earth' network, use adhoc networks
+- [x] Disable the debug logging of the PicoTcp and SocketTap
 
-* Disable the debug logging of the PicoTcp and SocketTap
-
-* Stats about the data transfer rate
+- [x] Stats about the data transfer rate

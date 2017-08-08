@@ -5,5 +5,5 @@ cmake-build-debug/
 zt
 another
 main
-p2p-port-forward
+p2p-port-forward*
 vendor
