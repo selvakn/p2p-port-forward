@@ -34,7 +34,9 @@ func main() {
 
 	if len(forwarder.GetOtherIP()) == 0 {
 		ztListener, _ := zt.Listen6(PORT)
-		go utils.Sync(dialLocalService, ztListener.Accept)
+		loggingListener := utils.LoggingListener{Listener: ztListener}
+
+		go utils.Sync(dialLocalService, loggingListener.Accept)
 
 		<-utils.SetupCleanUpOnInterrupt(func() {
 			ztListener.Close()
