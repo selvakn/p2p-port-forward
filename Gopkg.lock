@@ -3,6 +3,18 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/alecthomas/template"
+  packages = [".","parse"]
+  revision = "a0175ee3bccc567396460bf5acd36800cb10c49c"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/alecthomas/units"
+  packages = ["."]
+  revision = "2efee857e7cfd4f3d0138cc3cbb1b4966962b93a"
+
+[[projects]]
+  branch = "master"
   name = "github.com/c2h5oh/datasize"
   packages = ["."]
   revision = "54516c931ae99c3c74637b9ea2390cf9a6327f26"
@@ -43,9 +55,15 @@
   packages = ["unix","windows","windows/registry","windows/svc/eventlog"]
   revision = "d8f5ea21b9295e315e612b4bcf4bedea93454d4d"
 
+[[projects]]
+  name = "gopkg.in/alecthomas/kingpin.v2"
+  packages = ["."]
+  revision = "1087e65c9441605df944fb12c33f0fe7072d18ca"
+  version = "v2.2.5"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "85075dd528dc2c7139a5b2954bf1759e48af3ada0481015527a61be78d7dfcd3"
+  inputs-digest = "f01157e55c0b7530715f83cc365bf6a47ed8bf099192558e89b8b4984d4179d2"
   solver-name = "gps-cdcl"
   solver-version = 1
