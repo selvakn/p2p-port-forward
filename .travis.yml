@@ -1,6 +1,5 @@
 language: go
 go_import_path: p2p-port-forward
-
 go:
   - '1.8'
 
@@ -16,3 +15,13 @@ install:
 
 script:
   - xgo --targets=linux/amd64,darwin-10.11/amd64 .
+
+deploy:
+  provider: releases
+  api_key:
+    secure: DDTfjWFmyVRtr2aBzAQVDEqOTF9YXnFD6h6cJwyx4voLDzKgNEg0OQfahnxaf/l292cOo9pUU7WkWZbPzW2AE2MVED9GuF7Wqs2uqyWmUvecID7nnvCU80OLVoEM4LGZo15yhzy/A50Pp1FhdjrB7lyOdQYIYAIVLxL7umOT8XUwPA9/hkLTMulw3mBiLjR5+A1t2/4No4O/4vxRZLgUSpzpTGBxlEFs+3A0NAQ6w9PsnyeYwrmeIjh7EMHunlovWK9I9z+q4Z2j4xIQfpzIKWtPELsxTCbz0X3E+J8A7x74S3rGXb3rCtvCujpb4eYGst9syiKom3TzCq0WF7B2OLJEEDX5pagNl5yTLu4s4F65vLH09l4Jde0Us60K+Kg4FABQ/8CYGcTWGu8Q2GPImHQnd5I8OTuEy6CXy1OIU2QXEU1W4cq1bMVKPd113ZZ0b3cd016dS2HCKFIvjHvfHx1/x6aOOPn/TeHYaNVE2pWM0O9wABl6acrSpZq9ZgqAjaHk42hVqVCnVEz+0JXVv0D1n4xB0F+vkqCvuejygYqp11Hp7Jbxmc1oMn+6AvTi45k4VZUZX5mB0EUcfCViYnVIX42RrnVaQ7rdhqqGk1x5iX886WZOg8wVEIasMOb1mLZwG0dgwTdohIxWpHvrIJdhL7N6qyUxso0aERycovk=
+  file_glob: true
+  file: p2p-port-forward-*
+  skip_cleanup: true
+  on:
+    tags: true
