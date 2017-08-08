@@ -1,4 +1,5 @@
 language: go
+go_import_path: github.com/selvakn/p2p-port-forward
 
 go:
   - '1.8'
