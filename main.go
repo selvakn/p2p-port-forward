@@ -18,7 +18,7 @@ func dialLocalService() (net.Conn, error) {
 
 func dialRemoteThroughTunnel(zt *libzt.ZT) func() (net.Conn, error) {
 	return func() (net.Conn, error) {
-		conn, err := zt.Connect6(*serverIp, INTERNAL_ZT_PORT)
+		conn, err := zt.Connect6(*connectTo, INTERNAL_ZT_PORT)
 		conn = (&utils.DataRateLoggingConnection{}).Init(conn)
 		return conn, err
 	}
@@ -26,11 +26,10 @@ func dialRemoteThroughTunnel(zt *libzt.ZT) func() (net.Conn, error) {
 
 var (
 	network     = kingpin.Flag("network", "zerotier network id").Short('n').Default("8056c2e21c000001").String()
-	mode        = kingpin.Flag("listen-mode", "listen mode").Short('l').Default("false").Bool()
 	forwardPort = kingpin.Flag("forward-port", "port to forward (in listen mode)").Short('f').Default("22").String()
 	acceptPort  = kingpin.Flag("accept-port", "port to accept (in connect mode)").Short('a').Default("2222").String()
 
-	serverIp = kingpin.Flag("server", "server (zerotier) ip").Short('s').String()
+	connectTo = kingpin.Flag("connect-to", "server (zerotier) ip to connect").Short('c').String()
 )
 
 func main() {
@@ -43,7 +42,9 @@ func main() {
 	logger.Infof("ipv4 = %v \n", zt.GetIPv4Address().String())
 	logger.Infof("ipv6 = %v \n", zt.GetIPv6Address().String())
 
-	if *mode {
+	if len(*connectTo) == 0 {
+		logger.Info("Waiting for any client to connect")
+
 		listener, _ := zt.Listen6(INTERNAL_ZT_PORT)
 		loggingListener := &utils.LoggingListener{Listener: listener}
 		dataRageLogginglistener := &utils.DataRateLoggingListener{Listener: loggingListener}
