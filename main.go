@@ -4,7 +4,7 @@ import (
 	"net"
 	"p2p-port-forward/forwarder"
 	"p2p-port-forward/utils"
-	"p2p-port-forward/libzt"
+	"github.com/selvakn/libzt"
 	"fmt"
 	"p2p-port-forward/listener"
 	"github.com/google/logger"

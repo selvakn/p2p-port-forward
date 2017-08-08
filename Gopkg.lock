@@ -33,6 +33,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/selvakn/libzt"
+  packages = ["."]
+  revision = "c7631d21f673d9ca8b4a9f1232ab443d0c3912bd"
+
+[[projects]]
+  branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix","windows","windows/registry","windows/svc/eventlog"]
   revision = "d8f5ea21b9295e315e612b4bcf4bedea93454d4d"
@@ -40,6 +46,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "0951f994abb8cc7e3e8b9e9c2bf848d1bed8f844e60a89ddda8836baf2c7948b"
+  inputs-digest = "85075dd528dc2c7139a5b2954bf1759e48af3ada0481015527a61be78d7dfcd3"
   solver-name = "gps-cdcl"
   solver-version = 1
