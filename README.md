@@ -14,9 +14,8 @@ On both the hosts
     Or
     
 2) Single binaries
-        
-    `wip`
-
+    * Download the single binary for your platform from [releases](https://github.com/selvakn/p2p-port-forward/releases)
+    * `mv p2p-port-forward-<platform/arch> p2p-port-forward`
 
 ### Usage
 
