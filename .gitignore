@@ -1,10 +1,2 @@
 .idea/
-CMakeLists.txt
-README.md
-a.out
-cmake-build-debug/
-zt
-another
-main
-p2p-port-forward
 vendor
