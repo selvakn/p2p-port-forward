@@ -28,8 +28,8 @@ func dialRemoteThroughTunnel(zt *libzt.ZT) func() (net.Conn, error) {
 func main() {
 	zt := libzt.Init(NETWORK_ID, "./zt")
 
-	log.Infof("ipv4 = %s \n", zt.GetIPv4Address())
-	log.Infof("ipv6 = %s \n", zt.GetIPv6Address())
+	log.Infof("ipv4 = %v \n", zt.GetIPv4Address().String())
+	log.Infof("ipv6 = %v \n", zt.GetIPv6Address().String())
 
 	if len(forwarder.GetOtherIP()) == 0 {
 		ztListener, _ := zt.Listen6(PORT)

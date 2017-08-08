@@ -4,10 +4,17 @@ import (
 	"net"
 	"time"
 	"syscall"
+	"errors"
+	"fmt"
 )
 
 type Connection struct {
-	fd int
+	fd         int
+	localIP    net.IP
+	localPort  uint16
+
+	remoteIp   net.IP
+	remotePort uint16
 }
 
 func (c *Connection) Read(b []byte) (n int, err error) {
@@ -23,13 +30,15 @@ func (c *Connection) Close() error {
 }
 
 func (c *Connection) LocalAddr() net.Addr {
-	return nil // TODO: Implement
+	addr, _ := net.ResolveTCPAddr("tcp6", fmt.Sprintf("[%s]:%d", c.localIP.String(), c.localPort))
+	return addr
 }
 
 func (c *Connection) RemoteAddr() net.Addr {
-	return nil // TODO: Implement
-
+	addr, _ := net.ResolveTCPAddr("tcp6", fmt.Sprintf("[%s]:%d", c.remoteIp.String(), c.remotePort))
+	return addr
 }
-func (c *Connection) SetDeadline(time.Time) error      { return nil }
-func (c *Connection) SetReadDeadline(time.Time) error  { return nil }
-func (c *Connection) SetWriteDeadline(time.Time) error { return nil }
+
+func (c *Connection) SetDeadline(time.Time) error      { return errors.New("Not yet supported") }
+func (c *Connection) SetReadDeadline(time.Time) error  { return errors.New("Not yet supported") }
+func (c *Connection) SetWriteDeadline(time.Time) error { return errors.New("Not yet supported") }

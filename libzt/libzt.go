@@ -15,6 +15,8 @@ import (
 	"net"
 	"errors"
 	"encoding/binary"
+	"strings"
+	"bytes"
 )
 
 const ZT_MAX_IPADDR_LEN = C.ZT_MAX_IPADDR_LEN
@@ -30,16 +32,22 @@ func Init(id string, homePath string) (*ZT) {
 	return zt
 }
 
-func (zt *ZT) GetIPv4Address() string {
+func (zt *ZT) GetIPv4Address() net.IP {
 	address := make([]byte, ZT_MAX_IPADDR_LEN)
 	C.zts_get_ipv4_address(C.CString(zt.id), (*C.char)(unsafe.Pointer(&address[0])), C.ZT_MAX_IPADDR_LEN)
-	return string(address)
+	address = bytes.Trim(address, "\x00")
+
+	ip, _, _ := net.ParseCIDR(strings.TrimSpace(string(address)))
+	return ip
 }
 
-func (zt *ZT) GetIPv6Address() string {
+func (zt *ZT) GetIPv6Address() net.IP {
 	address := make([]byte, ZT_MAX_IPADDR_LEN)
 	C.zts_get_ipv6_address(C.CString(zt.id), (*C.char)(unsafe.Pointer(&address[0])), C.ZT_MAX_IPADDR_LEN)
-	return string(address)
+	address = bytes.Trim(address, "\x00")
+
+	ip, _, _ := net.ParseCIDR(strings.TrimSpace(string(address)))
+	return ip
 }
 
 func (zt *ZT) Listen6(port uint16) (net.Listener, error) {
@@ -59,7 +67,7 @@ func (zt *ZT) Listen6(port uint16) (net.Listener, error) {
 		return nil, errors.New("ERROR listening")
 	}
 
-	return &TCP6Listener{fd: fd}, nil
+	return &TCP6Listener{fd: fd, localIP: zt.GetIPv6Address()}, nil
 }
 
 func (zt *ZT) Connect6(ip string, port uint16) (net.Conn, error) {
@@ -76,7 +84,11 @@ func (zt *ZT) Connect6(ip string, port uint16) (net.Conn, error) {
 	}
 
 	conn := &Connection{
-		fd: fd,
+		fd:         fd,
+		localIP:    zt.GetIPv6Address(),
+		localPort:  clientSocket.Port,
+		remoteIp:   net.ParseIP(ip),
+		remotePort: port,
 	}
 	return conn, nil
 }
@@ -106,7 +118,8 @@ func bind6(fd int, sockerAddr syscall.RawSockaddrInet6) int {
 func accept6(fd int) (int, syscall.RawSockaddrInet6) {
 	socketAddr := syscall.RawSockaddrInet6{}
 	socketLength := syscall.SizeofSockaddrInet6
-	return (int)(C.zts_accept(cint(fd), (*C.struct_sockaddr)(unsafe.Pointer(&socketAddr)), (*C.socklen_t)(unsafe.Pointer(&socketLength)))), socketAddr
+	newFd := (int)(C.zts_accept(cint(fd), (*C.struct_sockaddr)(unsafe.Pointer(&socketAddr)), (*C.socklen_t)(unsafe.Pointer(&socketLength))))
+	return newFd, socketAddr
 }
 
 func cint(value int) C.int {
