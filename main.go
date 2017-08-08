@@ -20,7 +20,9 @@ func dialLocalService() (net.Conn, error) {
 
 func dialRemoteThroughTunnel(zt *libzt.ZT) func() (net.Conn, error) {
 	return func() (net.Conn, error) {
-		return zt.Connect6(forwarder.GetOtherIP(), PORT)
+		conn, err := zt.Connect6(forwarder.GetOtherIP(), PORT)
+		conn = (&utils.DataRateLoggingConnection{}).Init(conn)
+		return conn, err
 	}
 }
 
@@ -33,13 +35,14 @@ func main() {
 	logger.Infof("ipv6 = %v \n", zt.GetIPv6Address().String())
 
 	if len(forwarder.GetOtherIP()) == 0 {
-		ztListener, _ := zt.Listen6(PORT)
-		loggingListener := utils.LoggingListener{Listener: ztListener}
+		listener, _ := zt.Listen6(PORT)
+		loggingListener := &utils.LoggingListener{Listener: listener}
+		dataRageLogginglistener := &utils.DataRateLoggingListener{Listener: loggingListener}
 
-		go utils.Sync(dialLocalService, loggingListener.Accept)
+		go utils.Sync(dialLocalService, dataRageLogginglistener.Accept)
 
 		<-utils.SetupCleanUpOnInterrupt(func() {
-			ztListener.Close()
+			listener.Close()
 		})
 
 	} else {

@@ -3,19 +3,43 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/c2h5oh/datasize"
+  packages = ["."]
+  revision = "54516c931ae99c3c74637b9ea2390cf9a6327f26"
+
+[[projects]]
+  branch = "master"
   name = "github.com/google/logger"
   packages = ["."]
   revision = "5b2da9b226d18e59c7b5eb2648778cdd72fbeb77"
 
 [[projects]]
   branch = "master"
+  name = "github.com/gosuri/uilive"
+  packages = ["."]
+  revision = "ac356e6e42cd31fcef8e6aec13ae9ed6fe87713e"
+
+[[projects]]
+  name = "github.com/mattn/go-isatty"
+  packages = ["."]
+  revision = "fc9e8d8ef48496124e79ae0df75490096eccf6fe"
+  version = "v0.0.2"
+
+[[projects]]
+  name = "github.com/paulbellamy/ratecounter"
+  packages = ["."]
+  revision = "524851a93235ac051e3540563ed7909357fe24ab"
+  version = "v0.2.0"
+
+[[projects]]
+  branch = "master"
   name = "golang.org/x/sys"
-  packages = ["windows","windows/registry","windows/svc/eventlog"]
+  packages = ["unix","windows","windows/registry","windows/svc/eventlog"]
   revision = "d8f5ea21b9295e315e612b4bcf4bedea93454d4d"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d963839f4832470a3b5d17555f6834d454173417e672398b77cbb80c66d758e5"
+  inputs-digest = "0951f994abb8cc7e3e8b9e9c2bf848d1bed8f844e60a89ddda8836baf2c7948b"
   solver-name = "gps-cdcl"
   solver-version = 1
