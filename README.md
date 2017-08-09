@@ -1,4 +1,7 @@
+
 # p2p-port-forward
+
+[![Build Status](https://travis-ci.org/selvakn/p2p-port-forward.svg?branch=master)](https://travis-ci.org/selvakn/p2p-port-forward) [![Go Report Card](https://goreportcard.com/badge/github.com/selvakn/p2p-port-forward)](https://goreportcard.com/report/github.com/selvakn/p2p-port-forward)
 
 Command line utility to forward ports between two hosts across different networks/subnets, in a peer-to-peer fashion using [zerotier](zerotier.com).
 , _without_ sudo privileges
