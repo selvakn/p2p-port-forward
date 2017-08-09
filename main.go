@@ -1,13 +1,13 @@
 package main
 
 import (
-	"net"
-	"p2p-port-forward/utils"
-	"github.com/selvakn/libzt"
 	"fmt"
 	"github.com/google/logger"
-	"os"
+	"github.com/selvakn/libzt"
 	"gopkg.in/alecthomas/kingpin.v2"
+	"net"
+	"os"
+	"p2p-port-forward/utils"
 )
 
 const INTERNAL_ZT_PORT = 7878
