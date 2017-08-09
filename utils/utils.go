@@ -1,9 +1,9 @@
 package utils
 
 import (
+	"github.com/google/logger"
 	"os"
 	"os/signal"
-	"github.com/google/logger"
 )
 
 func SetupCleanUpOnInterrupt(callback func()) chan bool {

@@ -1,12 +1,12 @@
 package utils
 
 import (
-	"net"
-	"time"
+	"fmt"
+	"github.com/c2h5oh/datasize"
 	"github.com/gosuri/uilive"
 	"github.com/paulbellamy/ratecounter"
-	"github.com/c2h5oh/datasize"
-	"fmt"
+	"net"
+	"time"
 )
 
 type TransferRate struct {
@@ -54,11 +54,15 @@ func (c *DataRateLoggingConnection) Close() error {
 	return c.conn.Close()
 }
 
-func (c *DataRateLoggingConnection) LocalAddr() net.Addr                { return c.conn.LocalAddr() }
-func (c *DataRateLoggingConnection) RemoteAddr() net.Addr               { return c.conn.RemoteAddr() }
-func (c *DataRateLoggingConnection) SetDeadline(t time.Time) error      { return c.conn.SetDeadline(t) }
-func (c *DataRateLoggingConnection) SetReadDeadline(t time.Time) error  { return c.conn.SetReadDeadline(t) }
-func (c *DataRateLoggingConnection) SetWriteDeadline(t time.Time) error { return c.conn.SetReadDeadline(t) }
+func (c *DataRateLoggingConnection) LocalAddr() net.Addr           { return c.conn.LocalAddr() }
+func (c *DataRateLoggingConnection) RemoteAddr() net.Addr          { return c.conn.RemoteAddr() }
+func (c *DataRateLoggingConnection) SetDeadline(t time.Time) error { return c.conn.SetDeadline(t) }
+func (c *DataRateLoggingConnection) SetReadDeadline(t time.Time) error {
+	return c.conn.SetReadDeadline(t)
+}
+func (c *DataRateLoggingConnection) SetWriteDeadline(t time.Time) error {
+	return c.conn.SetReadDeadline(t)
+}
 
 func (c *DataRateLoggingConnection) getTransferRate() TransferRate {
 	return TransferRate{up: (datasize.ByteSize)(c.upRate.Rate()/10) * datasize.B, down: (datasize.ByteSize)(c.downRate.Rate()/10) * datasize.B}

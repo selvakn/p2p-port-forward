@@ -1,9 +1,9 @@
 package utils
 
 import (
+	"github.com/google/logger"
 	"net"
 	"time"
-	"github.com/google/logger"
 )
 
 type LoggingConnection struct {

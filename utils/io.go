@@ -1,9 +1,9 @@
 package utils
 
 import (
+	"github.com/google/logger"
 	"io"
 	"net"
-	"github.com/google/logger"
 )
 
 func Sync(stream1 func() (net.Conn, error), stream2 func() (net.Conn, error)) {
