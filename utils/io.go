@@ -25,11 +25,11 @@ func Sync(stream1 func() (net.Conn, error), stream2 func() (net.Conn, error)) {
 }
 
 func sync(source1 io.ReadWriteCloser, source2 io.ReadWriteCloser) {
-	// FixMe: Cauing seg fault with the zt connections on close ¯\_(ツ)_/¯
+	go func() {
+		defer source2.Close()
+		defer source1.Close()
 
-	//defer source1.Close()
-	//defer source2.Close()
-
-	go io.Copy(source1, source2)
-	io.Copy(source2, source1)
+		io.Copy(source2, source1)
+	}()
+	io.Copy(source1, source2)
 }

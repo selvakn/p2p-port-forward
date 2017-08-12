@@ -18,6 +18,7 @@ func dialLocalService() (net.Conn, error) {
 
 func dialRemoteThroughTunnel(zt *libzt.ZT) func() (net.Conn, error) {
 	return func() (net.Conn, error) {
+		logger.Infof("Attempting a remote connection")
 		conn, err := zt.Connect6(*connectTo, INTERNAL_ZT_PORT)
 		conn = (&utils.DataRateLoggingConnection{}).Init(conn)
 		return conn, err
