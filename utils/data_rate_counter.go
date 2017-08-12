@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+var rateUpdateInterval = 10 * time.Second
+
 type DataRateCounter interface {
 	GetDataRate() datasize.ByteSize
 	CaptureEvent(rate int)
@@ -13,7 +15,7 @@ type DataRateCounter interface {
 
 func NewRateCounter() DataRateCounter {
 	counter := dataRateCounter{
-		rateCounter:     ratecounter.NewRateCounter(10 * time.Second),
+		rateCounter:     ratecounter.NewRateCounter(rateUpdateInterval),
 		noActivityTimer: time.NewTimer(time.Second),
 	}
 	go counter.updateOnNoActivity()
@@ -22,7 +24,7 @@ func NewRateCounter() DataRateCounter {
 }
 
 type dataRateCounter struct {
-	rateCounter *ratecounter.RateCounter
+	rateCounter     *ratecounter.RateCounter
 	noActivityTimer *time.Timer
 }
 
@@ -32,12 +34,13 @@ func (c dataRateCounter) GetDataRate() datasize.ByteSize {
 
 func (c dataRateCounter) CaptureEvent(rate int) {
 	c.rateCounter.Incr(int64(rate))
-	c.noActivityTimer.Reset(time.Second)
+	c.noActivityTimer.Reset(rateUpdateInterval)
 }
 
 func (c dataRateCounter) updateOnNoActivity() {
 	for {
 		<-c.noActivityTimer.C
 		c.rateCounter.Incr(0)
+		c.noActivityTimer.Reset(rateUpdateInterval)
 	}
 }

@@ -23,7 +23,7 @@
   branch = "master"
   name = "github.com/google/logger"
   packages = ["."]
-  revision = "5b2da9b226d18e59c7b5eb2648778cdd72fbeb77"
+  revision = "f5e2be57531caf995a3bb3ed9c1d4dd909d417e0"
 
 [[projects]]
   branch = "master"
@@ -47,13 +47,13 @@
   branch = "master"
   name = "github.com/selvakn/libzt"
   packages = ["."]
-  revision = "c7631d21f673d9ca8b4a9f1232ab443d0c3912bd"
+  revision = "074a21cb316460019e3de3cdcd446df264b13ac3"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix","windows","windows/registry","windows/svc/eventlog"]
-  revision = "d8f5ea21b9295e315e612b4bcf4bedea93454d4d"
+  revision = "e42485b6e20ae7d2304ec72e535b103ed350cc02"
 
 [[projects]]
   name = "gopkg.in/alecthomas/kingpin.v2"
@@ -64,6 +64,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "f01157e55c0b7530715f83cc365bf6a47ed8bf099192558e89b8b4984d4179d2"
+  inputs-digest = "84281c39edc6c0860302398583eebeae13a39aa49851762d23e19451464a8bb1"
   solver-name = "gps-cdcl"
   solver-version = 1

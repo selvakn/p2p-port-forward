@@ -36,6 +36,7 @@ var (
 func main() {
 	logger.Init("p2p-port-forward", false, false, os.Stdout)
 
+	kingpin.Version("1.0.1")
 	kingpin.Parse()
 
 	zt := libzt.Init(*network, "./zt")
