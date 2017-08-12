@@ -15,11 +15,10 @@ type TransferRate struct {
 }
 
 type DataRateLoggingConnection struct {
-	conn               net.Conn
-	writer             *uilive.Writer
-	updateStatsChannel bool
-	upRate             *ratecounter.RateCounter
-	downRate           *ratecounter.RateCounter
+	conn     net.Conn
+	writer   *uilive.Writer
+	upRate   *ratecounter.RateCounter
+	downRate *ratecounter.RateCounter
 }
 
 func (c *DataRateLoggingConnection) Init(conn net.Conn) *DataRateLoggingConnection {
@@ -37,14 +36,12 @@ func (c *DataRateLoggingConnection) Init(conn net.Conn) *DataRateLoggingConnecti
 func (c *DataRateLoggingConnection) Read(b []byte) (n int, err error) {
 	len, err := c.conn.Read(b)
 	c.downRate.Incr(int64(len))
-	c.updateStatsChannel = true
 
 	return len, err
 }
 func (c *DataRateLoggingConnection) Write(b []byte) (n int, err error) {
 	len, err := c.conn.Write(b)
 	c.upRate.Incr(int64(len))
-	c.updateStatsChannel = true
 
 	return len, err
 }
@@ -72,11 +69,8 @@ func (c *DataRateLoggingConnection) updateStats() {
 	throttle := time.Tick(time.Second)
 	for {
 		<-throttle
-		if c.updateStatsChannel {
-			rate := c.getTransferRate()
-			fmt.Fprintf(c.writer, "Up: %v/s, Down: %v/s              			\n", rate.up.HR(), rate.down.HR())
-			c.updateStatsChannel = false
-		}
+		rate := c.getTransferRate()
+		fmt.Fprintf(c.writer, "Up: %v/s, Down: %v/s              			\n", rate.up.HR(), rate.down.HR())
 	}
 }
 
