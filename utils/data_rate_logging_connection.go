@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/c2h5oh/datasize"
 	"github.com/gosuri/uilive"
-	"github.com/paulbellamy/ratecounter"
 	"net"
 	"time"
 )
@@ -15,18 +14,18 @@ type TransferRate struct {
 }
 
 type DataRateLoggingConnection struct {
-	conn     net.Conn
-	writer   *uilive.Writer
-	upRate   *ratecounter.RateCounter
-	downRate *ratecounter.RateCounter
+	conn            net.Conn
+	writer          *uilive.Writer
+	upRateCounter   DataRateCounter
+	downRateCounter DataRateCounter
 }
 
 func (c *DataRateLoggingConnection) Init(conn net.Conn) *DataRateLoggingConnection {
 	c.conn = conn
 	c.writer = uilive.New()
 	c.writer.Start()
-	c.upRate = ratecounter.NewRateCounter(10 * time.Second)
-	c.downRate = ratecounter.NewRateCounter(10 * time.Second)
+	c.upRateCounter = NewRateCounter()
+	c.downRateCounter = NewRateCounter()
 
 	go c.updateStats()
 
@@ -35,13 +34,13 @@ func (c *DataRateLoggingConnection) Init(conn net.Conn) *DataRateLoggingConnecti
 
 func (c *DataRateLoggingConnection) Read(b []byte) (n int, err error) {
 	len, err := c.conn.Read(b)
-	c.downRate.Incr(int64(len))
+	c.downRateCounter.CaptureEvent(len)
 
 	return len, err
 }
 func (c *DataRateLoggingConnection) Write(b []byte) (n int, err error) {
 	len, err := c.conn.Write(b)
-	c.upRate.Incr(int64(len))
+	c.upRateCounter.CaptureEvent(len)
 
 	return len, err
 }
@@ -62,7 +61,7 @@ func (c *DataRateLoggingConnection) SetWriteDeadline(t time.Time) error {
 }
 
 func (c *DataRateLoggingConnection) getTransferRate() TransferRate {
-	return TransferRate{up: (datasize.ByteSize)(c.upRate.Rate()/10) * datasize.B, down: (datasize.ByteSize)(c.downRate.Rate()/10) * datasize.B}
+	return TransferRate{up: c.upRateCounter.GetDataRate(), down: c.downRateCounter.GetDataRate()}
 }
 
 func (c *DataRateLoggingConnection) updateStats() {
