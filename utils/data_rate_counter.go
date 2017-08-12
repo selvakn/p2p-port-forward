@@ -12,14 +12,18 @@ type DataRateCounter interface {
 }
 
 func NewRateCounter() DataRateCounter {
-	return dataRateCounter{
-		rateCounter: ratecounter.NewRateCounter(10 * time.Second),
+	counter := dataRateCounter{
+		rateCounter:     ratecounter.NewRateCounter(10 * time.Second),
+		noActivityTimer: time.NewTimer(time.Second),
 	}
+	go counter.updateOnNoActivity()
+
+	return counter
 }
 
 type dataRateCounter struct {
 	rateCounter *ratecounter.RateCounter
-	//rateUpdater chan uint
+	noActivityTimer *time.Timer
 }
 
 func (c dataRateCounter) GetDataRate() datasize.ByteSize {
@@ -28,5 +32,12 @@ func (c dataRateCounter) GetDataRate() datasize.ByteSize {
 
 func (c dataRateCounter) CaptureEvent(rate int) {
 	c.rateCounter.Incr(int64(rate))
-	//return (datasize.ByteSize)(c.rateCounter.Rate()/10) * datasize.B
+	c.noActivityTimer.Reset(time.Second)
+}
+
+func (c dataRateCounter) updateOnNoActivity() {
+	for {
+		<-c.noActivityTimer.C
+		c.rateCounter.Incr(0)
+	}
 }
