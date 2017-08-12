@@ -8,15 +8,21 @@ Command line utility to forward ports between two hosts across different network
 
 ### Installation
 
-On both the hosts
+On both the hosts.
 
-1) Using `go get`
+1) Homebrew
+
+    `brew install https://raw.githubusercontent.com/selvakn/homebrew-core/master/Formula/p2p-port-forward.rb`
+
+    Or 
+
+2) Using `go get`
 
     `go get https://github.com/selvakn/p2p-port-forward`
 
     Or
     
-2) Single binaries
+3) Single binaries
     * Download the single binary for your platform from [releases](https://github.com/selvakn/p2p-port-forward/releases)
     * `mv p2p-port-forward-<platform/arch> p2p-port-forward`
     * `chmod +x p2p-port-forward`
