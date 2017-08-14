@@ -5,23 +5,17 @@ import (
 	"github.com/google/logger"
 	"github.com/selvakn/libzt"
 	"gopkg.in/alecthomas/kingpin.v2"
+	"io"
 	"net"
 	"os"
+	"p2p-port-forward/client"
+	"p2p-port-forward/constants"
 	"p2p-port-forward/utils"
 )
 
-const INTERNAL_ZT_PORT = 7878
-
-func dialLocalService() (net.Conn, error) {
-	return net.Dial("tcp", fmt.Sprintf("localhost:%s", *forwardPort))
-}
-
-func dialRemoteThroughTunnel(zt *libzt.ZT) func() (net.Conn, error) {
+func dialLocalService(networkProto utils.IPProto) func() (net.Conn, error) {
 	return func() (net.Conn, error) {
-		logger.Infof("Attempting a remote connection")
-		conn, err := zt.Connect6(*connectTo, INTERNAL_ZT_PORT)
-		conn = (&utils.DataRateLoggingConnection{}).Init(conn)
-		return conn, err
+		return net.Dial(networkProto.GetName(), fmt.Sprintf("localhost:%s", *forwardPort))
 	}
 }
 
@@ -29,6 +23,7 @@ var (
 	network     = kingpin.Flag("network", "zerotier network id").Short('n').Default("8056c2e21c000001").String()
 	forwardPort = kingpin.Flag("forward-port", "port to forward (in listen mode)").Short('f').Default("22").String()
 	acceptPort  = kingpin.Flag("accept-port", "port to accept (in connect mode)").Short('a').Default("2222").String()
+	useUDP      = kingpin.Flag("use-udp", "UDP instead of TCP (TCP default)").Short('u').Default("false").Bool()
 
 	connectTo = kingpin.Flag("connect-to", "server (zerotier) ip to connect").Short('c').String()
 )
@@ -44,27 +39,27 @@ func main() {
 	logger.Infof("ipv4 = %v \n", zt.GetIPv4Address().String())
 	logger.Infof("ipv6 = %v \n", zt.GetIPv6Address().String())
 
+	var closableConn io.Closer
+
 	if len(*connectTo) == 0 {
 		logger.Info("Waiting for any client to connect")
 
-		listener, _ := zt.Listen6(INTERNAL_ZT_PORT)
+		listener, _ := zt.Listen6(constants.INTERNAL_ZT_PORT)
 		loggingListener := &utils.LoggingListener{Listener: listener}
 		dataRageLogginglistener := &utils.DataRateLoggingListener{Listener: loggingListener}
 
-		go utils.Sync(dialLocalService, dataRageLogginglistener.Accept)
+		go utils.Sync(dialLocalService(utils.GetIPProto(*useUDP)), dataRageLogginglistener.Accept)
 
-		<-utils.SetupCleanUpOnInterrupt(func() {
-			listener.Close()
-		})
-
+		closableConn = listener
 	} else {
-		ln, _ := net.Listen("tcp", fmt.Sprintf(":%s", *acceptPort))
-
-		go utils.Sync(ln.Accept, dialRemoteThroughTunnel(zt))
-
-		<-utils.SetupCleanUpOnInterrupt(func() {
-			ln.Close()
-		})
-
+		forwarderClient := client.New(zt, *connectTo, *acceptPort, utils.GetIPProto(*useUDP))
+		closableConn = forwarderClient.ListenAndSync()
 	}
+
+	<-utils.SetupCleanUpOnInterrupt(func() {
+		if closableConn != nil {
+			closableConn.Close()
+		}
+	})
+
 }
