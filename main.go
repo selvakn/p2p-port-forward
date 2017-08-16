@@ -1,23 +1,15 @@
 package main
 
 import (
-	"fmt"
 	"github.com/google/logger"
 	"github.com/selvakn/libzt"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"io"
-	"net"
 	"os"
 	"p2p-port-forward/client"
-	"p2p-port-forward/constants"
 	"p2p-port-forward/utils"
+	"p2p-port-forward/server"
 )
-
-func dialLocalService(networkProto utils.IPProto) func() (net.Conn, error) {
-	return func() (net.Conn, error) {
-		return net.Dial(networkProto.GetName(), fmt.Sprintf("localhost:%s", *forwardPort))
-	}
-}
 
 var (
 	network     = kingpin.Flag("network", "zerotier network id").Short('n').Default("8056c2e21c000001").String()
@@ -42,15 +34,8 @@ func main() {
 	var closableConn io.Closer
 
 	if len(*connectTo) == 0 {
-		logger.Info("Waiting for any client to connect")
-
-		listener, _ := zt.Listen6(constants.INTERNAL_ZT_PORT)
-		loggingListener := &utils.LoggingListener{Listener: listener}
-		dataRageLogginglistener := &utils.DataRateLoggingListener{Listener: loggingListener}
-
-		go utils.Sync(dialLocalService(utils.GetIPProto(*useUDP)), dataRageLogginglistener.Accept)
-
-		closableConn = listener
+		forwarderServer := server.New(zt, *forwardPort, utils.GetIPProto(*useUDP))
+		closableConn = forwarderServer.Listen()
 	} else {
 		forwarderClient := client.New(zt, *connectTo, *acceptPort, utils.GetIPProto(*useUDP))
 		closableConn = forwarderClient.ListenAndSync()
