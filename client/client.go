@@ -32,13 +32,13 @@ func (c *Client) ListenAndSync() io.Closer {
 }
 
 func (c *Client) listenAndSyncUDP() io.Closer {
-	go utils.Sync(c.listenUDP(), c.dialRemoteThroughTunnel())
+	go utils.Sync(c.listenUDP(), c.dialRemoteThroughTunnel(), false)
 	return nil
 }
 
 func (c *Client) listenAndSyncTCP() io.Closer {
 	ln, _ := net.Listen(c.networkProto.GetName(), fmt.Sprintf(":%s", c.port))
-	go utils.Sync(ln.Accept, c.dialRemoteThroughTunnel())
+	go utils.Sync(ln.Accept, c.dialRemoteThroughTunnel(), true)
 	return ln
 }
 
@@ -52,8 +52,10 @@ func (c *Client) dialRemoteThroughTunnel() func() (net.Conn, error) {
 }
 
 func (c *Client) listenUDP() func() (net.Conn, error) {
+	fmt.Println("return Listening....")
 	return func() (net.Conn, error) {
 		addr, _ := net.ResolveUDPAddr(c.networkProto.GetName(), fmt.Sprintf(":%s", c.port))
+		fmt.Println("Listening....")
 		return net.ListenUDP(c.networkProto.GetName(), addr)
 	}
 }

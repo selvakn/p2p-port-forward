@@ -29,7 +29,7 @@ func (s *Server) Listen() io.Closer {
 	loggingListener := &utils.LoggingListener{Listener: listener}
 	dataRageLogginglistener := &utils.DataRateLoggingListener{Listener: loggingListener}
 
-	go utils.Sync(s.dialLocalService(), dataRageLogginglistener.Accept)
+	go utils.Sync(s.dialLocalService(), dataRageLogginglistener.Accept, true)
 	return dataRageLogginglistener
 }
 

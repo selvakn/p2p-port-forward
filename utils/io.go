@@ -5,21 +5,25 @@ import (
 	"net"
 )
 
-func Sync(stream1 func() (net.Conn, error), stream2 func() (net.Conn, error)) {
+func Sync(stream1 func() (net.Conn, error), stream2 func() (net.Conn, error), listenForNextConnection bool) {
 	for {
 		conn1, err := stream1()
 		if err != nil {
 			log.Error(err)
 			return
 		}
-		conn2, err := stream2()
 
+		conn2, err := stream2()
 		if err != nil {
 			log.Error(err)
 			return
 		}
 
-		go sync(conn1, conn2)
+		if listenForNextConnection {
+			go sync(conn1, conn2)
+		} else {
+			sync(conn1, conn2)
+		}
 	}
 }
 
