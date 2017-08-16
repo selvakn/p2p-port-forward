@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"github.com/google/logger"
 	"net"
 	"time"
 )
@@ -32,9 +31,9 @@ type LoggingListener struct {
 func (l *LoggingListener) Accept() (net.Conn, error) {
 	conn, err := l.Listener.Accept()
 	if err != nil {
-		logger.Errorf("Error while accepting %v\n", err)
+		log.Errorf("Error while accepting %v", err)
 	} else {
-		logger.Infof("Accepted incoming connection from %v", conn.RemoteAddr())
+		log.Infof("Accepted incoming connection from %v", conn.RemoteAddr())
 	}
 
 	return &LoggingConnection{conn: conn}, err

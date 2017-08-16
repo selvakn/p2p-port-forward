@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"github.com/google/logger"
 	"io"
 	"net"
 )
@@ -10,13 +9,13 @@ func Sync(stream1 func() (net.Conn, error), stream2 func() (net.Conn, error)) {
 	for {
 		conn1, err := stream1()
 		if err != nil {
-			logger.Error(err)
+			log.Error(err)
 			return
 		}
 		conn2, err := stream2()
 
 		if err != nil {
-			logger.Error(err)
+			log.Error(err)
 			return
 		}
 

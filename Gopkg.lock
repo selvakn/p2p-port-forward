@@ -21,12 +21,6 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/google/logger"
-  packages = ["."]
-  revision = "f5e2be57531caf995a3bb3ed9c1d4dd909d417e0"
-
-[[projects]]
-  branch = "master"
   name = "github.com/gosuri/uilive"
   packages = ["."]
   revision = "ac356e6e42cd31fcef8e6aec13ae9ed6fe87713e"
@@ -50,6 +44,18 @@
   revision = "074a21cb316460019e3de3cdcd446df264b13ac3"
 
 [[projects]]
+  name = "github.com/sirupsen/logrus"
+  packages = ["."]
+  revision = "f006c2ac4710855cf0f916dd6b77acf6b048dc6e"
+  version = "v1.0.3"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/crypto"
+  packages = ["ssh/terminal"]
+  revision = "b176d7def5d71bdd214203491f89843ed217f420"
+
+[[projects]]
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix","windows","windows/registry","windows/svc/eventlog"]
@@ -64,6 +70,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "84281c39edc6c0860302398583eebeae13a39aa49851762d23e19451464a8bb1"
+  inputs-digest = "79f31c54d378bb1d46ebfacdec46de13aeeca12f9f0e80cf6f80868a28bd8395"
   solver-name = "gps-cdcl"
   solver-version = 1

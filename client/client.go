@@ -2,13 +2,15 @@ package client
 
 import (
 	"fmt"
-	"github.com/google/logger"
 	"github.com/selvakn/libzt"
 	"io"
 	"net"
 	"p2p-port-forward/constants"
 	"p2p-port-forward/utils"
+	"p2p-port-forward/logger"
 )
+
+var log = logger.Logger
 
 type Client struct {
 	zt           *libzt.ZT
@@ -42,7 +44,7 @@ func (c *Client) listenAndSyncTCP() io.Closer {
 
 func (c *Client) dialRemoteThroughTunnel() func() (net.Conn, error) {
 	return func() (net.Conn, error) {
-		logger.Infof("Attempting a remote connection")
+		log.Infof("Attempting a remote connection")
 		conn, err := c.zt.Connect6(c.connectTo, constants.INTERNAL_ZT_PORT)
 		conn = (&utils.DataRateLoggingConnection{}).Init(conn)
 		return conn, err

@@ -1,12 +1,11 @@
 package main
 
 import (
-	"github.com/google/logger"
 	"github.com/selvakn/libzt"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"io"
-	"os"
 	"p2p-port-forward/client"
+	"p2p-port-forward/logger"
 	"p2p-port-forward/utils"
 	"p2p-port-forward/server"
 )
@@ -20,16 +19,16 @@ var (
 	connectTo = kingpin.Flag("connect-to", "server (zerotier) ip to connect").Short('c').String()
 )
 
-func main() {
-	logger.Init("p2p-port-forward", false, false, os.Stdout)
+var log = logger.Logger
 
+func main() {
 	kingpin.Version("1.0.1")
 	kingpin.Parse()
 
 	zt := libzt.Init(*network, "./zt")
 
-	logger.Infof("ipv4 = %v \n", zt.GetIPv4Address().String())
-	logger.Infof("ipv6 = %v \n", zt.GetIPv6Address().String())
+	log.Infof("ipv4 = %v ", zt.GetIPv4Address().String())
+	log.Infof("ipv6 = %v ", zt.GetIPv6Address().String())
 
 	var closableConn io.Closer
 

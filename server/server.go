@@ -6,9 +6,11 @@ import (
 	"net"
 	"p2p-port-forward/constants"
 	"p2p-port-forward/utils"
-	"github.com/google/logger"
 	"fmt"
+	"p2p-port-forward/logger"
 )
+
+var log = logger.Logger
 
 type Server struct {
 	zt      *libzt.ZT
@@ -21,7 +23,7 @@ func New(zt *libzt.ZT, port string, proto utils.IPProto) Server {
 }
 
 func (s *Server) Listen() io.Closer {
-	logger.Info("Waiting for any client to connect")
+	log.Info("Waiting for any client to connect")
 
 	listener, _ := s.zt.Listen6(constants.INTERNAL_ZT_PORT)
 	loggingListener := &utils.LoggingListener{Listener: listener}

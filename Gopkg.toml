@@ -27,10 +27,6 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/google/logger"
-
-[[constraint]]
-  branch = "master"
   name = "github.com/gosuri/uilive"
 
 [[constraint]]
