@@ -6,8 +6,8 @@ import (
 	"io"
 	"net"
 	"p2p-port-forward/constants"
-	"p2p-port-forward/utils"
 	"p2p-port-forward/logger"
+	"p2p-port-forward/utils"
 )
 
 var log = logger.Logger
@@ -56,6 +56,8 @@ func (c *Client) listenUDP() func() (net.Conn, error) {
 	return func() (net.Conn, error) {
 		addr, _ := net.ResolveUDPAddr(c.networkProto.GetName(), fmt.Sprintf(":%s", c.port))
 		fmt.Println("Listening....")
-		return net.ListenUDP(c.networkProto.GetName(), addr)
+		conn, err := net.ListenUDP(c.networkProto.GetName(), addr)
+		return &utils.DuplexUDPConnection{UDPConn: conn}, err
+
 	}
 }

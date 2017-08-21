@@ -1,13 +1,13 @@
 package server
 
 import (
-	"io"
+	"fmt"
 	"github.com/selvakn/libzt"
+	"io"
 	"net"
 	"p2p-port-forward/constants"
-	"p2p-port-forward/utils"
-	"fmt"
 	"p2p-port-forward/logger"
+	"p2p-port-forward/utils"
 )
 
 var log = logger.Logger

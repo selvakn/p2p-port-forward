@@ -6,8 +6,8 @@ import (
 	"io"
 	"p2p-port-forward/client"
 	"p2p-port-forward/logger"
-	"p2p-port-forward/utils"
 	"p2p-port-forward/server"
+	"p2p-port-forward/utils"
 )
 
 var (

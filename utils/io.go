@@ -29,10 +29,22 @@ func Sync(stream1 func() (net.Conn, error), stream2 func() (net.Conn, error), li
 
 func sync(source1 io.ReadWriteCloser, source2 io.ReadWriteCloser) {
 	go func() {
-		defer source2.Close()
-		defer source1.Close()
+		defer closeAll(source2, source1)
 
-		io.Copy(source2, source1)
+		_, err := io.Copy(source2, source1)
+		if err != nil {
+			log.Error(err)
+		}
 	}()
-	io.Copy(source1, source2)
+	_, err := io.Copy(source1, source2)
+	if err != nil {
+		log.Error(err)
+	}
+}
+
+func closeAll(sources ...io.Closer) {
+	log.Info("Closing all connections")
+	for _, source := range sources {
+		source.Close()
+	}
 }
