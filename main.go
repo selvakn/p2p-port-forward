@@ -22,7 +22,7 @@ var (
 var log = logger.Logger
 
 func main() {
-	kingpin.Version("1.0.1")
+	kingpin.Version("1.1.1")
 	kingpin.Parse()
 
 	zt := libzt.Init(*network, "./zt")

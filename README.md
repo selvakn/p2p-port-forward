@@ -28,6 +28,21 @@ On both the hosts.
 
 ### Usage
 
+```
+usage: p2p-port-forward [<flags>]
+
+Flags:
+      --help                   Show context-sensitive help (also try --help-long and --help-man).
+  -n, --network="8056c2e21c000001"
+                               zerotier network id
+  -f, --forward-port="22"      port to forward (in listen mode)
+  -a, --accept-port="2222"     port to accept (in connect mode)
+  -u, --use-udp                UDP instead of TCP (TCP default)
+  -c, --connect-to=CONNECT-TO  server (zerotier) ip to connect
+      --version                Show application version.
+
+```
+
 On host1 (where the service or any port should be exposed)
 
 `p2p-port-forward [-n 8056c2e21c000001] [-f 22]`
